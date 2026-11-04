@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>まなびノート</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="まなびノート">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F3F7F9">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@600&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: one centered graph-paper notebook column (max 980px); quiz screens split into question | scratch pad on wide tablets, stacked when narrow */
+:root{
+  --paper:#F3F7F9; --grid:#E1E9EF; --card:#FFFFFF; --ink:#1E2A3A; --muted:#5B6B7D; --line:#D3DDE6;
+  --accent:#1F6F63; --accent-ink:#FFFFFF; --accent-soft:#DDEFEA;
+  --gold:#B97C10; --red:#D9433A; --ok:#2E8B57; --ok-soft:#E2F3E8; --ng-soft:#FBE6E4; --mark:#F6D776;
+  --f-ui:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-kanji:"Klee One","Hiragino Mincho ProN","Yu Mincho",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#14201E; --grid:#1C2B28; --card:#1B2826; --ink:#E7EEEA; --muted:#9FB2AC; --line:#2C3D39;
+  --accent:#5CC2AE; --accent-ink:#0D1A17; --accent-soft:#1F3A35;
+  --gold:#E3B04B; --red:#F07167; --ok:#5FD08A; --ok-soft:#1D3527; --ng-soft:#3A2321; --mark:#6B5A1E; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#14201E; --grid:#1C2B28; --card:#1B2826; --ink:#E7EEEA; --muted:#9FB2AC; --line:#2C3D39;
+  --accent:#5CC2AE; --accent-ink:#0D1A17; --accent-soft:#1F3A35;
+  --gold:#E3B04B; --red:#F07167; --ok:#5FD08A; --ok-soft:#1D3527; --ng-soft:#3A2321; --mark:#6B5A1E; color-scheme:dark}
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{min-height:100%}
+body{margin:0;-webkit-text-size-adjust:100%}
+img,svg{max-width:100%}
+body{background-color:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px;color:var(--ink);font-family:var(--f-ui);font-size:18px;line-height:1.6;-webkit-tap-highlight-color:transparent}
+#app{max-width:980px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{margin:0;text-wrap:balance;font-weight:700;line-height:1.3}
+h1{font-size:1.6rem} h2{font-size:1.25rem} h3{font-size:1.05rem}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,.abox:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font-family:var(--f-kanji);font-size:1.7rem;letter-spacing:.04em}
+.brand span{color:var(--muted);font-size:.9rem}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:.9rem;font-variant-numeric:tabular-nums}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.hero{border:2px solid var(--accent)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:700px){.grid3,.grid2{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:12px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:1.05rem}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big{min-height:64px;font-size:1.25rem;padding:0 30px}
+.btn.small{min-height:40px;padding:0 14px;font-size:.92rem}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.muted{color:var(--muted)}
+.en{color:var(--muted);font-size:.88rem;line-height:1.4}
+.tile{display:flex;flex-direction:column;gap:6px;text-align:left;align-items:flex-start}
+.tile .k{font-family:var(--f-kanji);font-size:2.2rem;line-height:1}
+.status{font-size:.85rem;padding:2px 10px;border-radius:999px;background:var(--accent-soft);color:var(--ink)}
+.status.todo{background:var(--ng-soft)}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;text-align:center}
+.week div{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.8rem;color:var(--muted)}
+.dot{width:38px;height:38px;border-radius:50%;border:2px dashed var(--line);display:grid;place-items:center}
+.dot.on{border:0}
+/* quiz */
+.qhead{display:flex;align-items:center;gap:14px}
+.qhead .bar{flex:1;height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.qhead .bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.qhead .num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.95rem}
+.prompt{font-size:1.1rem;font-weight:700}
+.word{font-family:var(--f-kanji);font-size:clamp(3rem,11vw,5.5rem);line-height:1.2;text-align:center;letter-spacing:.06em;padding:12px 0}
+.word .tk{background:linear-gradient(transparent 72%,var(--mark) 72%)}
+.yomi{text-align:center;font-size:1.5rem;letter-spacing:.2em;color:var(--muted)}
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.choice{min-height:70px;border-radius:12px;border:2px solid var(--line);background:var(--card);font-size:1.6rem;font-weight:700;letter-spacing:.08em}
+.choice.ok{background:var(--ok-soft);border-color:var(--ok)}
+.choice.ng{background:var(--ng-soft);border-color:var(--red)}
+.choice.idk{grid-column:1/-1;min-height:48px;font-size:1rem;letter-spacing:0;color:var(--muted)}
+.fb{min-height:34px;font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fb.ok{color:var(--ok)} .fb.ng{color:var(--red)}
+.qm{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:760px){.qm{grid-template-columns:1fr}}
+.mq{font-size:clamp(1.5rem,4.5vw,2.2rem);font-weight:700;line-height:1.5;font-variant-numeric:tabular-nums}
+.mq.long{font-size:1.25rem}
+.mq ruby rt{font-size:.5em;font-weight:500}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.1;margin:0 .15em;font-size:.85em}
+.fr span:first-child{border-bottom:2px solid currentColor;padding:0 .2em}
+.tag{align-self:flex-start;font-size:.82rem;padding:2px 10px;border-radius:999px;background:var(--accent-soft)}
+.ans{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:1.3rem;font-weight:700}
+.abox{min-width:96px;height:62px;padding:0 10px;border-radius:10px;border:2px solid var(--line);background:var(--paper);display:inline-flex;align-items:center;justify-content:center;font-size:1.9rem;font-variant-numeric:tabular-nums;cursor:pointer}
+.abox.act{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.fbox{display:inline-flex;flex-direction:column;align-items:center;gap:6px}
+.fbox .abox{min-width:80px;height:54px}
+.fline{width:96px;height:3px;background:var(--ink);border-radius:2px}
+.keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:360px}
+.keypad button{min-height:58px;border-radius:10px;border:2px solid var(--line);background:var(--card);font-size:1.5rem;font-weight:700}
+.keypad button:active{background:var(--accent-soft)}
+.padwrap{display:flex;flex-direction:column;gap:8px}
+.padhead{display:flex;justify-content:space-between;align-items:center;font-size:.9rem;color:var(--muted)}
+canvas.pad{width:100%;height:380px;border-radius:12px;border:2px solid var(--line);background-color:var(--card);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;touch-action:none;display:block}
+.wrow{display:flex;gap:18px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.wbox{position:relative;width:min(320px,80vw);aspect-ratio:1;max-width:100%;border:3px solid var(--ink);border-radius:6px;background:var(--card)}
+.wbox::before,.wbox::after{content:"";position:absolute;pointer-events:none}
+.wbox::before{left:50%;top:0;bottom:0;border-left:2px dashed var(--line)}
+.wbox::after{top:50%;left:0;right:0;border-top:2px dashed var(--line)}
+.wbox canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;z-index:2}
+.wbox .ghost{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-kanji);font-size:min(250px,62vw);line-height:1;color:var(--red);opacity:.22;z-index:1;pointer-events:none}
+.model{display:flex;flex-direction:column;align-items:center;gap:4px}
+.model b{font-family:var(--f-kanji);font-size:min(200px,40vw);line-height:1.1;font-weight:600}
+.grade3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.grade3 button{min-height:64px;border-radius:12px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:1.05rem}
+/* results / parent */
+.score{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.score .big{font-size:2.6rem;font-weight:700;font-variant-numeric:tabular-nums}
+.misslist{display:flex;flex-wrap:wrap;gap:8px}
+.miss{padding:6px 12px;border-radius:10px;background:var(--ng-soft);font-size:1rem}
+.miss b{font-family:var(--f-kanji);font-size:1.3rem;margin-right:6px}
+.kbar{display:grid;grid-template-columns:70px minmax(0,1fr) 110px;align-items:center;gap:10px;font-size:.92rem;font-variant-numeric:tabular-nums}
+.stack{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line)}
+.stack i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:.82rem;letter-spacing:.04em}
+.chip{display:inline-block;padding:1px 10px;border-radius:999px;font-size:.8rem;white-space:nowrap}
+.chip.m{background:var(--ok-soft);color:var(--ok)} .chip.l{background:var(--ng-soft);color:var(--red)} .chip.n{background:var(--line);color:var(--muted)} .chip.s{background:var(--accent-soft)}
+.toggle{display:flex;align-items:center;gap:10px}
+.sw{width:54px;height:30px;border-radius:15px;background:var(--line);position:relative;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--card);transition:left .2s}
+.sw.on{background:var(--accent)} .sw.on::after{left:27px}
+.confirm{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-radius:10px;background:var(--ng-soft)}
+@keyframes pop{0%{transform:scale(.6);opacity:.2}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.popin{animation:pop .45s ease-out}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.shake{animation:shake .3s}
+@media (prefers-reduced-motion:reduce){.popin,.shake{animation:none}.qhead .bar i,.sw,.sw::after{transition:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ---------- kanji bank: kanji / example word / reading of the word ---------- */
+const KSRC={
+1:`一 一つ ひとつ|右 右手 みぎて|雨 大雨 おおあめ|円 百円 ひゃくえん|王 王さま おうさま|音 足音 あしおと|下 下校 げこう|火 花火 はなび|花 草花 くさばな|貝 貝がら かいがら|学 学校 がっこう|気 人気 にんき|九 九つ ここのつ|休 休む やすむ|玉 目玉 めだま|金 お金 おかね|空 青空 あおぞら|月 月見 つきみ|犬 子犬 こいぬ|見 見学 けんがく|五 五つ いつつ|口 入口 いりぐち|校 校門 こうもん|左 左右 さゆう|三 三日 みっか|山 火山 かざん|子 女子 じょし|四 四つ よっつ|糸 毛糸 けいと|字 文字 もじ|耳 早耳 はやみみ|七 七夕 たなばた|車 水車 すいしゃ|手 上手 じょうず|十 十日 とおか|出 出口 でぐち|女 女の子 おんなのこ|小 小石 こいし|上 上下 じょうげ|森 森林 しんりん|人 大人 おとな|水 水田 すいでん|正 正月 しょうがつ|生 先生 せんせい|青 青年 せいねん|夕 夕日 ゆうひ|石 石 いし|赤 赤い あかい|千 千円 せんえん|川 小川 おがわ|先 先週 せんしゅう|早 早口 はやくち|草 草木 くさき|足 手足 てあし|村 村人 むらびと|大 大小 だいしょう|男 男子 だんし|竹 竹林 ちくりん|中 一日中 いちにちじゅう|虫 毛虫 けむし|町 町内 ちょうない|天 天気 てんき|田 田んぼ たんぼ|土 土 つち|二 二つ ふたつ|日 日曜日 にちようび|入 入学 にゅうがく|年 年上 としうえ|白 白い しろい|八 八つ やっつ|百 三百 さんびゃく|文 作文 さくぶん|木 大木 たいぼく|本 本 ほん|名 名人 めいじん|目 目上 めうえ|立 立つ たつ|力 学力 がくりょく|林 林 はやし|六 六つ むっつ`,
+2:`引 引く ひく|羽 羽 はね|雲 雲 くも|園 公園 こうえん|遠 遠足 えんそく|何 何人 なんにん|科 理科 りか|夏 夏休み なつやすみ|家 家 いえ|歌 歌手 かしゅ|画 画用紙 がようし|回 一回 いっかい|会 会社 かいしゃ|海 海水 かいすい|絵 絵本 えほん|外 外国 がいこく|角 三角 さんかく|楽 音楽 おんがく|活 生活 せいかつ|間 時間 じかん|丸 丸い まるい|岩 岩 いわ|顔 顔 かお|汽 汽車 きしゃ|記 日記 にっき|帰 帰る かえる|弓 弓 ゆみ|牛 牛肉 ぎゅうにく|魚 金魚 きんぎょ|京 東京 とうきょう|強 強い つよい|教 教える おしえる|近 近い ちかい|兄 お兄さん おにいさん|形 人形 にんぎょう|計 時計 とけい|元 元気 げんき|言 言う いう|原 原っぱ はらっぱ|戸 雨戸 あまど|古 古い ふるい|午 午後 ごご|後 後ろ うしろ|語 国語 こくご|工 工作 こうさく|公 公立 こうりつ|広 広い ひろい|交 交通 こうつう|光 日光 にっこう|考 考える かんがえる|行 行く いく|高 高い たかい|黄 黄色 きいろ|合 合図 あいず|谷 谷 たに|国 国 くに|黒 黒い くろい|今 今日 きょう|才 天才 てんさい|細 細い ほそい|作 作る つくる|算 算数 さんすう|止 中止 ちゅうし|市 市場 いちば|矢 矢 や|姉 お姉さん おねえさん|思 思う おもう|紙 手紙 てがみ|寺 寺 てら|自 自分 じぶん|時 何時 なんじ|室 室内 しつない|社 社会 しゃかい|弱 弱い よわい|首 首 くび|秋 秋 あき|週 毎週 まいしゅう|春 春 はる|書 読書 どくしょ|少 少し すこし|場 場所 ばしょ|色 色紙 いろがみ|食 食事 しょくじ|心 心 こころ|新 新しい あたらしい|親 親友 しんゆう|図 図工 ずこう|数 数字 すうじ|西 西 にし|声 大声 おおごえ|星 星 ほし|晴 晴れ はれ|切 大切 たいせつ|雪 雪 ゆき|船 船 ふね|線 線 せん|前 名前 なまえ|組 番組 ばんぐみ|走 走る はしる|多 多い おおい|太 太い ふとい|体 体 からだ|台 台風 たいふう|地 地図 ちず|池 池 いけ|知 知る しる|茶 お茶 おちゃ|昼 昼 ひる|長 校長 こうちょう|鳥 小鳥 ことり|朝 朝 あさ|直 直す なおす|通 通る とおる|弟 弟 おとうと|店 店 みせ|点 点数 てんすう|電 電車 でんしゃ|刀 刀 かたな|冬 冬 ふゆ|当 本当 ほんとう|東 東 ひがし|答 答え こたえ|頭 頭 あたま|同 同じ おなじ|道 道 みち|読 読む よむ|内 校内 こうない|南 南 みなみ|肉 肉 にく|馬 馬 うま|売 売る うる|買 買う かう|麦 麦 むぎ|半 半分 はんぶん|番 当番 とうばん|父 お父さん おとうさん|風 風 かぜ|分 五分 ごふん|聞 新聞 しんぶん|米 米 こめ|歩 歩く あるく|母 お母さん おかあさん|方 夕方 ゆうがた|北 北 きた|毎 毎日 まいにち|妹 妹 いもうと|万 一万 いちまん|明 明るい あかるい|鳴 鳴く なく|毛 毛 け|門 門 もん|夜 夜 よる|野 野原 のはら|友 友だち ともだち|用 用意 ようい|曜 曜日 ようび|来 来る くる|里 里 さと|理 理由 りゆう|話 電話 でんわ`,
+3:`悪 悪い わるい|安 安心 あんしん|暗 暗い くらい|医 医者 いしゃ|委 委員 いいん|意 意味 いみ|育 体育 たいいく|員 店員 てんいん|院 病院 びょういん|飲 飲む のむ|運 運動 うんどう|泳 水泳 すいえい|駅 駅 えき|央 中央 ちゅうおう|横 横 よこ|屋 屋上 おくじょう|温 温度 おんど|化 化石 かせき|荷 荷物 にもつ|界 世界 せかい|開 開く ひらく|階 二階 にかい|寒 寒い さむい|感 感想 かんそう|漢 漢字 かんじ|館 図書館 としょかん|岸 海岸 かいがん|起 起きる おきる|期 学期 がっき|客 お客さん おきゃくさん|究 研究 けんきゅう|急 急ぐ いそぐ|級 学級 がっきゅう|宮 宮城県 みやぎけん|球 地球 ちきゅう|去 去年 きょねん|橋 石橋 いしばし|業 作業 さぎょう|曲 曲がる まがる|局 薬局 やっきょく|銀 銀行 ぎんこう|区 地区 ちく|苦 苦い にがい|具 道具 どうぐ|君 君 きみ|係 係 かかり|軽 軽い かるい|血 血 ち|決 決める きめる|研 研究 けんきゅう|県 県 けん|庫 車庫 しゃこ|湖 湖 みずうみ|向 向こう むこう|幸 幸せ しあわせ|港 港 みなと|号 番号 ばんごう|根 屋根 やね|祭 お祭り おまつり|皿 皿 さら|仕 仕事 しごと|死 死ぬ しぬ|使 使う つかう|始 始まる はじまる|指 指 ゆび|歯 歯 は|詩 詩 し|次 次 つぎ|事 火事 かじ|持 持つ もつ|式 入学式 にゅうがくしき|実 実 み|写 写真 しゃしん|者 学者 がくしゃ|主 主人公 しゅじんこう|守 守る まもる|取 取る とる|酒 お酒 おさけ|受 受ける うける|州 九州 きゅうしゅう|拾 拾う ひろう|終 終わる おわる|習 習う ならう|集 集める あつめる|住 住む すむ|重 重い おもい|宿 宿屋 やどや|所 近所 きんじょ|暑 暑い あつい|助 助ける たすける|昭 昭和 しょうわ|消 消す けす|商 商店 しょうてん|章 文章 ぶんしょう|勝 勝つ かつ|乗 乗る のる|植 植物 しょくぶつ|申 申す もうす|身 身長 しんちょう|神 神社 じんじゃ|真 真ん中 まんなか|深 深い ふかい|進 進む すすむ|世 世話 せわ|整 整理 せいり|昔 昔 むかし|全 全部 ぜんぶ|相 相手 あいて|送 送る おくる|想 予想 よそう|息 息 いき|速 速い はやい|族 家族 かぞく|他 その他 そのた|打 打つ うつ|対 反対 はんたい|待 待つ まつ|代 時代 じだい|第 第一 だいいち|題 宿題 しゅくだい|炭 炭 すみ|短 短い みじかい|談 相談 そうだん|着 着る きる|注 注意 ちゅうい|柱 電柱 でんちゅう|丁 一丁目 いっちょうめ|帳 手帳 てちょう|調 調べる しらべる|追 追う おう|定 決定 けってい|庭 校庭 こうてい|笛 口笛 くちぶえ|鉄 地下鉄 ちかてつ|転 自転車 じてんしゃ|都 京都 きょうと|度 今度 こんど|投 投げる なげる|豆 豆 まめ|島 島 しま|湯 お湯 おゆ|登 登る のぼる|等 一等 いっとう|動 動く うごく|童 童話 どうわ|農 農家 のうか|波 波 なみ|配 心配 しんぱい|倍 二倍 にばい|箱 箱 はこ|畑 畑 はたけ|発 出発 しゅっぱつ|反 反対 はんたい|坂 坂道 さかみち|板 黒板 こくばん|皮 皮 かわ|悲 悲しい かなしい|美 美しい うつくしい|鼻 鼻 はな|筆 筆 ふで|氷 氷 こおり|表 発表 はっぴょう|秒 十秒 じゅうびょう|病 病気 びょうき|品 作品 さくひん|負 負ける まける|部 部屋 へや|服 洋服 ようふく|福 幸福 こうふく|物 動物 どうぶつ|平 平ら たいら|返 返す かえす|勉 勉強 べんきょう|放 放す はなす|味 味 あじ|命 命 いのち|面 画面 がめん|問 問題 もんだい|役 役目 やくめ|薬 薬 くすり|由 自由 じゆう|油 油 あぶら|有 有名 ゆうめい|遊 遊ぶ あそぶ|予 予定 よてい|羊 羊 ひつじ|洋 西洋 せいよう|葉 言葉 ことば|陽 太陽 たいよう|様 様子 ようす|落 落ちる おちる|流 流れる ながれる|旅 旅行 りょこう|両 両手 りょうて|緑 緑 みどり|礼 お礼 おれい|列 一列 いちれつ|練 練習 れんしゅう|路 道路 どうろ|和 平和 へいわ`,
+4:`愛 愛 あい|案 案内 あんない|以 以上 いじょう|衣 衣服 いふく|位 位置 いち|茨 茨城県 いばらきけん|印 目印 めじるし|英 英語 えいご|栄 栄える さかえる|媛 愛媛県 えひめけん|塩 塩 しお|岡 静岡県 しずおかけん|億 一億 いちおく|加 参加 さんか|果 果物 くだもの|貨 貨物 かもつ|課 放課後 ほうかご|芽 芽 め|賀 年賀 ねんが|改 改める あらためる|械 機械 きかい|害 害虫 がいちゅう|街 街角 まちかど|各 各地 かくち|覚 覚える おぼえる|潟 新潟県 にいがたけん|完 完成 かんせい|官 外交官 がいこうかん|管 水道管 すいどうかん|関 関係 かんけい|観 観光 かんこう|願 願い ねがい|岐 岐阜県 ぎふけん|希 希望 きぼう|季 季節 きせつ|旗 国旗 こっき|器 楽器 がっき|機 飛行機 ひこうき|議 会議 かいぎ|求 求める もとめる|泣 泣く なく|給 給食 きゅうしょく|挙 挙手 きょしゅ|漁 漁船 ぎょせん|共 共通 きょうつう|協 協力 きょうりょく|鏡 鏡 かがみ|競 競争 きょうそう|極 南極 なんきょく|熊 熊本県 くまもとけん|訓 訓練 くんれん|軍 軍手 ぐんて|郡 郡 ぐん|群 群れ むれ|径 直径 ちょっけい|景 景色 けしき|芸 園芸 えんげい|欠 欠席 けっせき|結 結ぶ むすぶ|建 建物 たてもの|健 健康 けんこう|験 実験 じっけん|固 固い かたい|功 成功 せいこう|好 好き すき|香 香り かおり|候 気候 きこう|康 健康 けんこう|佐 佐賀県 さがけん|差 交差点 こうさてん|菜 野菜 やさい|最 最後 さいご|埼 埼玉県 さいたまけん|材 材料 ざいりょう|崎 長崎県 ながさきけん|昨 昨日 きのう|札 名札 なふだ|刷 印刷 いんさつ|察 観察 かんさつ|参 参る まいる|産 生産 せいさん|散 散歩 さんぽ|残 残る のこる|氏 氏名 しめい|司 司会 しかい|試 試合 しあい|児 児童 じどう|治 治る なおる|滋 滋賀県 しがけん|辞 辞書 じしょ|鹿 鹿 しか|失 失敗 しっぱい|借 借りる かりる|種 種 たね|周 周り まわり|祝 お祝い おいわい|順 順番 じゅんばん|初 初め はじめ|松 松 まつ|笑 笑う わらう|唱 合唱 がっしょう|焼 焼く やく|照 照らす てらす|城 お城 おしろ|縄 沖縄県 おきなわけん|臣 大臣 だいじん|信 信号 しんごう|井 井戸 いど|成 成長 せいちょう|省 反省 はんせい|清 清書 せいしょ|静 静か しずか|席 出席 しゅっせき|積 積む つむ|折 折る おる|節 節分 せつぶん|説 説明 せつめい|浅 浅い あさい|戦 戦う たたかう|選 選ぶ えらぶ|然 自然 しぜん|争 争う あらそう|倉 倉庫 そうこ|巣 巣 す|束 花束 はなたば|側 右側 みぎがわ|続 続く つづく|卒 卒業 そつぎょう|孫 孫 まご|帯 包帯 ほうたい|隊 隊長 たいちょう|達 友達 ともだち|単 単語 たんご|置 置く おく|仲 仲間 なかま|沖 沖 おき|兆 一兆 いっちょう|低 低い ひくい|底 海底 かいてい|的 目的 もくてき|典 辞典 じてん|伝 伝える つたえる|徒 生徒 せいと|努 努力 どりょく|灯 電灯 でんとう|働 働く はたらく|特 特別 とくべつ|徳 道徳 どうとく|栃 栃木県 とちぎけん|奈 奈良県 ならけん|梨 山梨県 やまなしけん|熱 熱い あつい|念 記念 きねん|敗 勝敗 しょうはい|梅 梅 うめ|博 博物館 はくぶつかん|阪 大阪 おおさか|飯 ご飯 ごはん|飛 飛ぶ とぶ|必 必ず かならず|票 投票 とうひょう|標 目標 もくひょう|不 不安 ふあん|夫 工夫 くふう|付 付ける つける|府 京都府 きょうとふ|阜 岐阜 ぎふ|富 富山県 とやまけん|副 副会長 ふくかいちょう|兵 兵庫県 ひょうごけん|別 別れる わかれる|辺 辺り あたり|変 大変 たいへん|便 便利 べんり|包 包む つつむ|法 方法 ほうほう|望 望む のぞむ|牧 牧場 ぼくじょう|末 週末 しゅうまつ|満 満月 まんげつ|未 未来 みらい|民 市民 しみん|無 無理 むり|約 約束 やくそく|勇 勇気 ゆうき|要 必要 ひつよう|養 栄養 えいよう|浴 海水浴 かいすいよく|利 利用 りよう|陸 大陸 たいりく|良 良い よい|料 料理 りょうり|量 大量 たいりょう|輪 指輪 ゆびわ|類 種類 しゅるい|令 命令 めいれい|冷 冷たい つめたい|例 例えば たとえば|連 連れる つれる|老 老人 ろうじん|労 苦労 くろう|録 記録 きろく`};
+const KJ={}, KINFO={};
+for(const g of [1,2,3,4]){KJ[g]=KSRC[g].split('|').map(s=>{const [k,w,r]=s.trim().split(/\s+/);const o={k,w,r,g};KINFO[k]=o;return o})}
+const ALLK=[1,2,3,4].flatMap(g=>KJ[g]);
+
+/* ---------- helpers ---------- */
+const app=document.getElementById('app');
+const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const avg=a=>a.length?sum(a)/a.length:0;
+const todayStr=(d=new Date())=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const dayNum=s=>{const [y,m,d]=s.split('-').map(Number);return Math.round(Date.UTC(y,m-1,d)/864e5)};
+const TODAY=()=>dayNum(todayStr());
+const rb=(k,r)=>`<ruby>${k}<rt>${r}</rt></ruby>`;
+const fr=(n,d)=>`<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+const fmtN=x=>String(+(+x).toFixed(4));
+const big=n=>n.toLocaleString('ja-JP');
+
+/* ---------- state ---------- */
+const KEY='manabi-v1';
+const fresh=()=>({v:1,en:true,kanji:{},write:{},units:{},days:{},kt:null,mt:null,updated:0});
+/* progress lives only on this iPad (localStorage); the parent view can save/restore a backup file */
+let st=fresh(), cur='home', storeOk=true, persisted=null;
+try{const s=localStorage.getItem(KEY);if(s)st=Object.assign(fresh(),JSON.parse(s))}catch(e){storeOk=false}
+function save(){st.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(st));storeOk=true}catch(e){storeOk=false}}
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(p=>{persisted=p}).catch(()=>{});
+const standalone=()=>window.navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+function backupText(){return JSON.stringify({app:'manabi-note',v:1,saved:new Date().toISOString(),data:st})}
+function restoreFrom(text){
+  const o=JSON.parse(text);const d=o&&o.app==='manabi-note'?o.data:o;
+  if(!d||typeof d!=='object'||!d.kanji||!d.units||!d.days)throw new Error('format');
+  st=Object.assign(fresh(),d);save();
+}
+let backupMsg='', pendingRestore=null;
+
+function logDay(kind,ok){const d=todayStr();const x=st.days[d]||(st.days[d]={k:0,m:0,w:0,ok:0,n:0});x[kind]++;x.n++;if(ok)x.ok++}
+function streak(){let n=0;const d=new Date();if(!st.days[todayStr(d)])d.setDate(d.getDate()-1);while(st.days[todayStr(d)]&&st.days[todayStr(d)].n){n++;d.setDate(d.getDate()-1)}return n}
+
+/* ---------- kanji: spaced review ---------- */
+const IV=[0,1,3,7,14,30];
+function srsKanji(k,ok){
+  let s=st.kanji[k];
+  if(!s){s=st.kanji[k]={b:ok?3:0,c:0,w:0}}
+  else s.b=ok?Math.min(s.b+1,5):0;
+  if(ok)s.c++;else s.w++;
+  s.due=TODAY()+IV[s.b];
+}
+function kanjiLevel(){ // highest grade passed in the level test (>=80%), counted from 1年
+  if(!st.kt)return 0; let p=0;
+  for(const g of [1,2,3,4]){const x=st.kt.r[g];if(x&&x.n&&x.c/x.n>=.8)p=g;else break}
+  return p;
+}
+function kanjiPlan(n=10){
+  const t=TODAY();
+  const due=Object.keys(st.kanji).filter(k=>KINFO[k]&&st.kanji[k].due<=t).sort((a,b)=>st.kanji[a].b-st.kanji[b].b||st.kanji[a].due-st.kanji[b].due).slice(0,7);
+  const out=due.slice(); const wg=Math.min(4,kanjiLevel()+1);
+  const unseen=g=>KJ[g].filter(o=>!st.kanji[o.k]&&!out.includes(o.k)).map(o=>o.k);
+  for(let g=1;g<wg&&out.length<n;g++){for(const k of unseen(g).slice(0,Math.min(3,n-out.length)))out.push(k);if(out.length>=due.length+3)break}
+  for(let g=wg;g<=4&&out.length<n;g++)for(const k of unseen(g)){if(out.length>=n)break;out.push(k)}
+  if(out.length<n){const extra=shuffle(Object.keys(st.kanji).filter(k=>KINFO[k]&&!out.includes(k)));while(out.length<n&&extra.length)out.push(extra.shift())}
+  return out.map(k=>mkKanji(KINFO[k]));
+}
+/* wrong-answer choices: near-miss spellings of the right reading plus other real readings */
+const DAK={か:'が',き:'ぎ',く:'ぐ',け:'げ',こ:'ご',さ:'ざ',し:'じ',す:'ず',せ:'ぜ',そ:'ぞ',た:'だ',て:'で',と:'ど',は:'ば',ひ:'び',ふ:'ぶ',へ:'べ',ほ:'ぼ',ぱ:'ば',ぴ:'び',ぷ:'ぶ',ぺ:'べ',ぽ:'ぼ'};
+const UNDAK={};for(const[a,b]of Object.entries(DAK))if(!'ぱぴぷぺぽ'.includes(a))UNDAK[b]=a;
+const OROW='おこそとのほもよろごぞどぼぽょ', TSUOK='かきくけこさしすせそたちつてとぱぴぷぺぽ', SMALL={ゃ:'や',ゅ:'ゆ',ょ:'よ'}, IROW='きしちにひみりぎじびぴ';
+function mutate(r){
+  const a=[...r], ops=shuffle(['dak','tsu','long','small']);
+  for(const op of ops){
+    if(op==='dak'){const idx=a.map((c,i)=>(DAK[c]||UNDAK[c])?i:-1).filter(i=>i>=0);if(idx.length){const i=pick(idx);const b=a.slice();b[i]=DAK[a[i]]||UNDAK[a[i]];return b.join('')}}
+    if(op==='tsu'){if(a.includes('っ')){const b=a.slice();b.splice(a.indexOf('っ'),1);return b.join('')}
+      const idx=a.map((c,i)=>i>0&&TSUOK.includes(c)&&!'っんゃゅょ'.includes(a[i-1])?i:-1).filter(i=>i>=0);if(idx.length){const b=a.slice();b.splice(pick(idx),0,'っ');return b.join('')}}
+    if(op==='long'){const i=a.findIndex((c,j)=>OROW.includes(c)&&a[j+1]==='う');if(i>=0){const b=a.slice();b.splice(i+1,1);return b.join('')}
+      const idx=a.map((c,j)=>OROW.includes(c)?j:-1).filter(j=>j>=0);if(idx.length){const b=a.slice();b.splice(pick(idx)+1,0,'う');return b.join('')}}
+    if(op==='small'){const i=a.findIndex(c=>SMALL[c]);if(i>=0){const b=a.slice();b[i]=SMALL[a[i]];return b.join('')}
+      const j=a.findIndex((c,x)=>x>0&&'やゆよ'.includes(c)&&IROW.includes(a[x-1]));if(j>=0){const b=a.slice();b[j]={や:'ゃ',ゆ:'ゅ',よ:'ょ'}[a[j]];return b.join('')}}
+  }
+  return null;
+}
+function choicesFor(o){
+  const set=new Set();
+  for(let i=0;i<20&&set.size<2;i++){let m=mutate(o.r);if(m&&Math.random()<.3)m=mutate(m)||m;if(m&&m!==o.r&&m.length>0)set.add(m)}
+  const L=[...o.r].length;
+  const pool=shuffle(ALLK.filter(x=>x.r!==o.r&&Math.abs([...x.r].length-L)<=1).map(x=>x.r));
+  while(set.size<3&&pool.length){const p=pool.shift();if(p!==o.r)set.add(p)}
+  return shuffle([o.r,...[...set].slice(0,3)]);
+}
+function mkKanji(o){return{kind:'kanji',k:o.k,w:o.w,r:o.r,g:o.g,choices:choicesFor(o)}}
+
+/* ---------- math units ---------- */
+const N=(q,en,ans,unit='')=>({type:'num',q,en,ans,unit,sol:fmtN(ans)+unit});
+const P=(q,en,a,b,mid,end='')=>({type:'pair',q,en,ans:[a,b],mid,end,sol:`${a}${mid==='あまり'?' あまり ':mid}${b}${end}`});
+const F=(q,en,n,d)=>({type:'frac',q,en,ans:[n,d],sol:fr(n,d)});
+function divrem(a,b,en){const q=Math.floor(a/b),r=a%b;return r?P(`${a} ÷ ${b} =`,en,q,r,'あまり'):N(`${a} ÷ ${b} =`,en,q)}
+const UNITS=[
+ {id:'a1',g:1,ja:'たし算（くり上がり）',en:'Addition with carrying',fast:6,gen(){const a=R(2,9),b=R(11-a,9);return N(`${a} + ${b} =`,'',a+b)}},
+ {id:'a2',g:1,ja:'ひき算（くり下がり）',en:'Subtraction with borrowing',fast:6,gen(){const n=R(11,18),b=R(Math.max(n-9,n%10+1),9);return N(`${n} − ${b} =`,'',n-b)}},
+ {id:'b1',g:2,ja:'2けたの たし算・ひき算',en:'2-digit + and −',gen(){
+   if(Math.random()<.5){let a,b;do{a=R(15,79);b=R(12,98-a)}while(a%10+b%10<10||a+b>99);return N(`${a} + ${b} =`,'',a+b)}
+   let a,b;do{a=R(31,98);b=R(12,a-10)}while(a%10>=b%10);return N(`${a} − ${b} =`,'',a-b)}},
+ {id:'b2',g:2,ja:'九九（かけ算）',en:'Times tables',fast:5,gen(){const a=R(2,9),b=R(2,9);return N(`${a} × ${b} =`,'',a*b)}},
+ {id:'b4',g:2,ja:'長さ（cm・mm・m）',en:'Length units',gen(){
+   if(Math.random()<.5){const c=R(2,15),m=R(1,9);return N(`${c}cm ${m}mm は 何mm？`,`${c} cm ${m} mm = ? mm`,c*10+m,'mm')}
+   const m=R(1,5),c=R(5,95);return N(`${m}m ${c}cm は 何cm？`,`${m} m ${c} cm = ? cm`,m*100+c,'cm')}},
+ {id:'c0',g:3,ja:'3けたの たし算・ひき算',en:'3-digit + and −',gen(){
+   if(Math.random()<.5){let a,b;do{a=R(125,689);b=R(108,999-a)}while(a%10+b%10<10&&Math.floor(a/10)%10+Math.floor(b/10)%10<10);return N(`${a} + ${b} =`,'',a+b)}
+   const a=R(302,987),b=R(105,a-30);return N(`${a} − ${b} =`,'',a-b)}},
+ {id:'c1',g:3,ja:'わり算（九九で）',en:'Division with tables',fast:6,gen(){const b=R(2,9),q=R(1,9);return N(`${b*q} ÷ ${b} =`,'',q)}},
+ {id:'c2',g:3,ja:'あまりのある わり算',en:'Division with remainders',gen(){const b=R(3,9),q=R(2,9),r=R(1,b-1);return P(`${b*q+r} ÷ ${b} =`,'Write the answer and the remainder',q,r,'あまり')}},
+ {id:'c3',g:3,ja:'かけ算の 筆算',en:'Long multiplication',gen(){const t=R(1,3);let a,b;
+   if(t===1){a=R(23,98);b=R(3,9)}else if(t===2){a=R(12,49);b=R(12,39)}else{a=R(123,489);b=R(12,29)}return N(`${a} × ${b} =`,'',a*b)}},
+ {id:'c4',g:3,ja:'大きな数（万）',en:'Numbers up to ten millions',gen(){const t=R(1,3);
+   if(t===1){const n=R(12,99);return N(`1000を ${n}こ あつめた 数は？`,`${n} groups of 1,000 = ?`,n*1000)}
+   if(t===2){const n=R(25,999);return N(`${n}を 10倍した 数は？`,`${n} × 10 = ?`,n*10)}
+   const m=R(2,9),k=R(1,9);return N(`${m}万${k*1000} を 数字で かくと？`,`Write ${m}万${k*1000} in digits`,m*10000+k*1000)}},
+ {id:'c5',g:3,ja:'小数（0.1の位）',en:'Decimals (tenths)',gen(){const t=R(1,3);
+   if(t===1){const x=R(3,19),y=R(2,9);return N(`${fmtN(x/10)} + ${fmtN(y/10)} =`,'',(x+y)/10)}
+   if(t===2){const x=R(12,19),y=R(3,9);return N(`${fmtN(x/10)} − ${fmtN(y/10)} =`,'',(x-y)/10)}
+   const n=R(12,38);return N(`0.1を ${n}こ あつめた 数は？`,`${n} groups of 0.1 = ?`,n/10)}},
+ {id:'c6',g:3,ja:'分数（同じ分母）',en:'Fractions, same denominator',gen(){const d=R(3,9);
+   if(Math.random()<.5){const a=R(1,d-2),b=R(1,d-1-a);return F(`${fr(a,d)} + ${fr(b,d)} =`,'',a+b,d)}
+   const a=R(2,d-1),b=R(1,a-1);return F(`${fr(a,d)} − ${fr(b,d)} =`,'',a-b,d)}},
+ {id:'c7',g:3,ja:'時こくと 時間',en:'Time',gen(){const t=R(1,3);
+   if(t===1){const m=R(1,3),s=R(5,55);return N(`${m}分${s}秒は 何秒？`,`${m} min ${s} s = ? seconds`,m*60+s,'秒')}
+   if(t===2){let s;do{s=R(65,175)}while(s%60===0);return P(`${s}秒は 何分何秒？`,`${s} seconds = ? min ? s`,Math.floor(s/60),s%60,'分','秒')}
+   const h=R(8,10),m=R(30,55),a=R(60-m,45);return P(`午前${h}時${m}分の ${a}分後は 何時何分？`,`${a} minutes after ${h}:${m} a.m. is…`,h+1,m+a-60,'時','分')}},
+ {id:'d1',g:4,ja:'がい数・大きな数（億）',en:'Rounding and big numbers',gen(){const t=R(1,3);
+   if(t===1){let n;do{n=R(10000,99999)}while(n%1000===0);return N(`${big(n)} を ${rb('四捨五入','ししゃごにゅう')}して、千の位までの がい数に すると？`,`Round ${big(n)} to the nearest thousand`,Math.round(n/1000)*1000)}
+   if(t===2){const n=R(12,980);return N(`${n}万を 10倍すると 何万？`,`${n}万 × 10 = ?万`,n*10,'万')}
+   const a=R(1,9);return N(`${a}億は 1000万を 何こ あつめた 数？`,`${a}億 is how many 1000万s?`,a*10,'こ')}},
+ {id:'d2',g:4,ja:'わり算の 筆算（÷1けた）',en:'Long division by 1 digit',gen(){const b=R(3,9),q=R(12,Math.floor(999/b)-1),r=R(0,b-1);return divrem(b*q+r,b,'If there is a remainder, write it too')}},
+ {id:'d3',g:4,ja:'わり算の 筆算（÷2けた）',en:'Long division by 2 digits',gen(){const b=R(12,39),q=R(2,9),r=R(0,b-1);return divrem(b*q+r,b,'If there is a remainder, write it too')}},
+ {id:'d4',g:4,ja:'小数の たし算・ひき算',en:'Adding and subtracting decimals',gen(){
+   const x=R(105,899),y=Math.random()<.5?R(2,49)*10:R(15,450);
+   if(Math.random()<.5)return N(`${fmtN(x/100)} + ${fmtN(y/100)} =`,'',(x+y)/100);
+   const a=Math.max(x,y),b=Math.min(x,y);return N(`${fmtN(a/100)} − ${fmtN(b/100)} =`,'',(a-b)/100)}},
+ {id:'d5',g:4,ja:'小数の かけ算・わり算',en:'Decimals × and ÷ whole numbers',gen(){
+   if(Math.random()<.5){const x=R(12,89),k=R(3,9);return N(`${fmtN(x/10)} × ${k} =`,'',x*k/10)}
+   const k=R(2,9),q=R(12,49);return N(`${fmtN(q*k/10)} ÷ ${k} =`,'',q/10)}},
+ {id:'d6',g:4,ja:'分数（'+rb('仮分数','かぶんすう')+'・'+rb('帯分数','たいぶんすう')+'）',en:'Improper and mixed fractions',gen(){const d=R(3,9);
+   if(Math.random()<.5){const a=R(2,d-1),b=R(Math.max(1,d-a+1),d-1);return F(`${fr(a,d)} + ${fr(b,d)} =`,'You can answer as an improper fraction',a+b,d)}
+   const w=R(1,3),n=R(1,d-1);return F(`${w}${fr(n,d)} を ${rb('仮分数','かぶんすう')}に すると？`,`Write ${w} ${n}/${d} as an improper fraction`,w*d+n,d)}},
+ {id:'d7',g:4,ja:'角の 大きさ',en:'Angles',gen(){const t=R(1,3);
+   if(t===1){const x=R(25,155);return N(`${rb('一直線','いっちょくせん')}の 角（180°）を 2つに 分けました。かたほうが ${x}° のとき、もう かたほうは 何度？`,`A straight angle (180°) is split in two. One part is ${x}°. The other?`,180-x,'°')}
+   if(t===2){const x=R(100,330);return N(`1${rb('回転','かいてん')}は 360°。${x}° と あと 何度で 1回転？`,`A full turn is 360°. ${x}° + ? = 360°`,360-x,'°')}
+   const k=R(2,4);return N(`${rb('直角','ちょっかく')} ${k}つ分は 何度？`,`${k} right angles = ? degrees`,90*k,'°')}},
+ {id:'d8',g:4,ja:'面積',en:'Area',gen(){const t=R(1,10);
+   if(t===1)return N(`1m² は 何cm²？`,'1 m² = ? cm²',10000,'cm²');
+   const a=R(3,15),b=R(3,15);
+   if(t<=4)return N(`たて ${a}cm、よこ ${b}cm の ${rb('長方形','ちょうほうけい')}の ${rb('面積','めんせき')}は？`,`Area of a ${a} cm × ${b} cm rectangle?`,a*b,'cm²');
+   if(t<=6)return N(`1辺が ${a}cm の ${rb('正方形','せいほうけい')}の ${rb('面積','めんせき')}は？`,`Area of a square with ${a} cm sides?`,a*a,'cm²');
+   return N(`${rb('面積','めんせき')}が ${a*b}cm² で、たてが ${a}cm の ${rb('長方形','ちょうほうけい')}。よこは 何cm？`,`A rectangle has area ${a*b} cm² and height ${a} cm. Width?`,b,'cm')}},
+ {id:'d9',g:4,ja:'計算の きまり',en:'Order of operations',gen(){const t=R(1,3),en='Do ( ) first, then × and ÷, then + and −';
+   if(t===1){const a=R(5,30),b=R(2,20),c=R(2,9);return N(`(${a} + ${b}) × ${c} =`,en,(a+b)*c)}
+   if(t===2){const b=R(2,9),c=R(2,9),a=R(b*c+1,b*c+40);return N(`${a} − ${b} × ${c} =`,en,a-b*c)}
+   const c=R(2,9),q=R(2,9),a=R(3,50);return N(`${a} + ${c*q} ÷ ${c} =`,en,a+q)}},
+];
+const UMAP=Object.fromEntries(UNITS.map(u=>[u.id,u]));
+function mkMath(u){const it=u.gen();it.kind='math';it.uid=u.id;return it}
+function unitHist(id,ok,ms,inTest){
+  const u=st.units[id]||(st.units[id]={h:[],t:[],m:false});
+  u.h.push(ok?1:0);u.t.push(Math.round(ms/100)/10);u.h=u.h.slice(-10);u.t=u.t.slice(-10);
+  if(inTest)return;
+  const U=UMAP[id],l=u.h.slice(-8),tl=u.t.slice(-8);
+  if(l.length>=8&&sum(l)>=7&&(!U.fast||avg(tl)<=U.fast))u.m=true;
+  const l5=u.h.slice(-5);if(u.m&&l5.length===5&&sum(l5)<=2)u.m=false;
+}
+const targetUnit=()=>UNITS.find(u=>!(st.units[u.id]&&st.units[u.id].m));
+function mathPlan(n=8){
+  const t=targetUnit(), done=UNITS.filter(u=>st.units[u.id]&&st.units[u.id].m), out=[];
+  for(let i=0;i<n-2;i++)out.push(mkMath(t||pick(UNITS)));
+  for(let i=0;i<2;i++)out.push(mkMath(done.length?pick(done):(t||pick(UNITS))));
+  return out;
+}
+function writePlan(n=5){
+  const t=TODAY();
+  const cand=ALLK.filter(o=>st.kanji[o.k]&&st.kanji[o.k].b>=2);
+  const due=cand.filter(o=>st.write[o.k]&&st.write[o.k].due<=t).sort((a,b)=>st.write[a.k].b-st.write[b.k].b);
+  const fresh=cand.filter(o=>!st.write[o.k]);
+  return [...due,...fresh].slice(0,n).map(o=>({kind:'write',k:o.k,w:o.w,r:o.r,g:o.g}));
+}
+const writable=()=>ALLK.some(o=>st.kanji[o.k]&&st.kanji[o.k].b>=2);
+
+/* ---------- drawing pad (Apple Pencil: once a pen is seen, finger touches are ignored) ---------- */
+function makePad(cv,scale=1){
+  const ctx=cv.getContext('2d');let pen=false,drawing=false,last=null,rect=null;
+  function size(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()||'#1E2A3A'}
+  size();
+  const pos=e=>[e.clientX-rect.left,e.clientY-rect.top];
+  cv.addEventListener('pointerdown',e=>{if(e.pointerType==='pen')pen=true;if(pen&&e.pointerType==='touch')return;rect=cv.getBoundingClientRect();drawing=true;last=pos(e);try{cv.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()});
+  cv.addEventListener('pointermove',e=>{if(!drawing||(pen&&e.pointerType==='touch'))return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+    for(const ev of evs){const p=pos(ev);ctx.lineWidth=(ev.pointerType==='pen'?1.6+(ev.pressure||.5)*3.4:3)*scale;ctx.beginPath();ctx.moveTo(last[0],last[1]);ctx.lineTo(p[0],p[1]);ctx.stroke();last=p}e.preventDefault()});
+  const end=()=>{drawing=false};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+  return{clear(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.restore()}};
+}
+
+function hanamaru(size=110){
+  const c=60;let d='';
+  for(let i=0;i<=600;i+=12){const a=i*Math.PI/180,r=6+i/600*24;d+=(i?'L':'M')+(c+r*Math.cos(a)).toFixed(1)+' '+(c+r*Math.sin(a)).toFixed(1)}
+  let q='';const n=9;
+  for(let k=0;k<n;k++){const a0=k/n*2*Math.PI,a1=(k+1)/n*2*Math.PI,am=(a0+a1)/2;
+    if(!k)q+='M'+(c+36*Math.cos(a0)).toFixed(1)+' '+(c+36*Math.sin(a0)).toFixed(1);
+    q+='Q'+(c+58*Math.cos(am)).toFixed(1)+' '+(c+58*Math.sin(am)).toFixed(1)+' '+(c+36*Math.cos(a1)).toFixed(1)+' '+(c+36*Math.sin(a1)).toFixed(1)}
+  return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" role="img" aria-label="はなまる"><path d="${d}" fill="none" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="${q}" fill="none" stroke="var(--red)" stroke-width="4" stroke-linejoin="round"/></svg>`;
+}
+
+/* ---------- quiz runner ---------- */
+function runQuiz(opt){
+  cur='quiz';const res=[];let item=null,t0=0,locked=false;
+  function step(){item=opt.next(res);if(!item){opt.done(res,false);return}locked=false;t0=performance.now();draw();window.scrollTo(0,0)}
+  function record(ok,info){const ms=performance.now()-t0;res.push({item,ok,ms,info});opt.onAnswer(item,ok,ms,info);save()}
+  function head(){const tot=Math.max(opt.total(res),res.length+1),pct=Math.round(res.length/tot*100);
+    return `<div class="qhead"><button class="btn small ghost" id="quit">やめる</button><div class="bar"><i style="width:${pct}%"></i></div><span class="num">${res.length+1} / ${tot}</span></div>`}
+  function draw(){
+    let body='';
+    if(item.kind==='kanji')body=kanjiView(item);
+    else if(item.kind==='math')body=mathView(item);
+    else body=writeView(item);
+    app.innerHTML=`${head()}<h2>${esc(opt.title)}</h2>${body}`;
+    document.getElementById('quit').onclick=()=>opt.done(res,true);
+    if(item.kind==='kanji')bindKanji();else if(item.kind==='math')bindMath();else bindWrite();
+  }
+  function kanjiView(it){
+    const hl=esc(it.w).replace(esc(it.k),`<span class="tk">${esc(it.k)}</span>`);
+    return `<div class="card"><div class="prompt">この ことばの よみかたは？ ${st.en?'<span class="en">How do you read this word?</span>':''}</div>
+      <div class="word">${hl}</div>
+      <div class="choices">${it.choices.map((c,i)=>`<button class="choice" data-i="${i}">${esc(c)}</button>`).join('')}<button class="choice idk" data-i="-1">わからない</button></div>
+      <div class="fb" id="fb"></div></div>`}
+  function bindKanji(){
+    app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{
+      if(locked)return;locked=true;const i=+b.dataset.i,ok=i>=0&&item.choices[i]===item.r;
+      app.querySelectorAll('.choice').forEach(x=>{const j=+x.dataset.i;if(j>=0&&item.choices[j]===item.r)x.classList.add('ok')});
+      if(!ok&&i>=0)b.classList.add('ng');
+      record(ok);
+      const fb=document.getElementById('fb');
+      if(ok){fb.className='fb ok popin';fb.textContent='せいかい！';setTimeout(step,750)}
+      else{fb.className='fb ng';fb.innerHTML=`<span>「${esc(item.w)}」は「${esc(item.r)}」</span><button class="btn primary" id="nx">つぎへ</button>`;document.getElementById('nx').onclick=step}
+    })}
+  let vals=[],act=0;
+  function mathView(it){
+    vals=it.type==='num'?['']:['',''];act=0;
+    const u=UMAP[it.uid];
+    let boxes;
+    if(it.type==='num')boxes=`<div class="abox act" data-i="0" tabindex="0"></div><span>${esc(it.unit)}</span>`;
+    else if(it.type==='pair')boxes=`<div class="abox act" data-i="0" tabindex="0"></div><span>${it.mid}</span><div class="abox" data-i="1" tabindex="0"></div><span>${it.end}</span>`;
+    else boxes=`<div class="fbox"><div class="abox act" data-i="0" tabindex="0"></div><div class="fline"></div><div class="abox" data-i="1" tabindex="0"></div></div><span class="en">上が 分子、下が 分母</span>`;
+    const longQ=it.q.replace(/<[^>]+>/g,'').length>16;
+    return `<div class="qm"><div class="card">
+      <span class="tag">${u.g}年 ${u.ja}${st.en?' · '+u.en:''}</span>
+      <div class="mq${longQ?' long':''}">${it.q}</div>
+      ${st.en&&it.en?`<div class="en">${it.en}</div>`:''}
+      <div class="ans">${boxes}</div>
+      <div class="keypad">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-k="${k}" aria-label="${k==='⌫'?'1文字けす':k}">${k}</button>`).join('')}</div>
+      <button class="btn primary big" id="chk">こたえあわせ</button>
+      <div class="fb" id="fb"></div></div>
+      <div class="card padwrap"><div class="padhead"><span>けいさんメモ（ペンで かいてね）</span><button class="btn small" id="clr">ぜんぶ けす</button></div><canvas class="pad" id="pad"></canvas></div></div>`}
+  function paintBoxes(){app.querySelectorAll('.abox').forEach(b=>{const i=+b.dataset.i;b.textContent=vals[i];b.classList.toggle('act',i===act)})}
+  function bindMath(){
+    const pad=makePad(document.getElementById('pad'));document.getElementById('clr').onclick=pad.clear;
+    app.querySelectorAll('.abox').forEach(b=>b.onclick=()=>{act=+b.dataset.i;paintBoxes()});
+    app.querySelectorAll('.keypad button').forEach(b=>b.onclick=()=>{if(locked)return;const k=b.dataset.k;let v=vals[act];
+      if(k==='⌫')v=v.slice(0,-1);else if(k==='.'){if(item.type==='num'&&!v.includes('.'))v=(v||'0')+'.'}else if(v.length<9)v=(v==='0'?'':v)+k;
+      vals[act]=v;paintBoxes()});
+    document.getElementById('chk').onclick=()=>{
+      if(locked)return;const fb=document.getElementById('fb');
+      if(vals.some(v=>v===''||v==='.')){fb.className='fb ng shake';fb.textContent='□に こたえを 入れてね';const e=app.querySelector('.abox:empty');if(e){act=+e.dataset.i;paintBoxes()}return}
+      let ok;
+      if(item.type==='num')ok=Math.abs(parseFloat(vals[0])-item.ans)<1e-9;
+      else if(item.type==='pair')ok=+vals[0]===item.ans[0]&&+vals[1]===item.ans[1];
+      else{const n=+vals[0],d=+vals[1];ok=d>0&&n*item.ans[1]===item.ans[0]*d}
+      locked=true;record(ok);
+      if(ok){fb.className='fb ok popin';fb.textContent='せいかい！';setTimeout(step,800)}
+      else{fb.className='fb ng';fb.innerHTML=`<span>こたえは ${item.sol}</span><button class="btn primary" id="nx">つぎへ</button>`;document.getElementById('nx').onclick=step}
+    }}
+  function writeView(it){
+    const blank=esc(it.w).replace(esc(it.k),'□');
+    return `<div class="card"><div class="prompt">□に 入る かんじを かこう ${st.en?'<span class="en">Write the missing kanji in the box</span>':''}</div>
+      <div class="yomi">${esc(it.r)}</div><div class="word" style="font-size:clamp(2.4rem,8vw,4rem)">${blank}</div>
+      <div class="wrow"><div class="wbox"><div class="ghost" id="ghost" hidden>${esc(it.k)}</div><canvas id="wpad"></canvas></div>
+      <div class="model" id="model" hidden><span class="muted">おてほん</span><b>${esc(it.k)}</b></div></div>
+      <div class="row" style="justify-content:center"><button class="btn" id="wclr">けす</button><button class="btn primary" id="show">こたえを みる</button></div>
+      <div id="grade" hidden><p class="prompt" style="text-align:center;margin-bottom:8px">じぶんで まるつけ しよう</p>
+      <div class="grade3"><button data-g="2">◎ かけた</button><button data-g="1">△ おしい</button><button data-g="0">× まだ</button></div></div></div>`}
+  function bindWrite(){
+    const pad=makePad(document.getElementById('wpad'),2.2);document.getElementById('wclr').onclick=pad.clear;
+    document.getElementById('show').onclick=()=>{document.getElementById('model').hidden=false;document.getElementById('ghost').hidden=false;document.getElementById('grade').hidden=false;document.getElementById('show').hidden=true};
+    app.querySelectorAll('#grade button').forEach(b=>b.onclick=()=>{if(locked)return;locked=true;record(b.dataset.g==='2',+b.dataset.g);step()});
+  }
+  step();
+}
+
+/* ---------- flows ---------- */
+function onKanjiAnswer(it,ok){if(!it.retry)srsKanji(it.k,ok);logDay('k',ok)}
+function onWriteAnswer(it,ok,ms,g){
+  const s=st.write[it.k]||(st.write[it.k]={b:0});
+  if(g===2)s.b=Math.min(s.b+1,5);else if(g===0)s.b=0;
+  s.due=TODAY()+(g===1?1:IV[s.b]);logDay('w',ok);
+}
+function practice(parts){
+  const q=[];
+  if(parts.includes('k'))q.push(...kanjiPlan(10));
+  if(parts.includes('m'))q.push(...mathPlan(8));
+  if(parts.includes('w'))q.push(...writePlan(5));
+  const retried=new Set();
+  runQuiz({title:parts.length>1?'きょうの れんしゅう':parts[0]==='k'?'かんじの よみ':parts[0]==='m'?'さんすう':'かんじを かこう',
+    total:res=>res.length+q.length+1,
+    next:()=>q.shift()||null,
+    onAnswer(it,ok,ms,info){
+      if(it.kind==='kanji'){onKanjiAnswer(it,ok);if(!ok&&!retried.has(it.k)){retried.add(it.k);const again=mkKanji(KINFO[it.k]);again.retry=true;const at=q.findIndex(x=>x.kind!=='kanji');at<0?q.push(again):q.splice(at,0,again)}}
+      else if(it.kind==='math'){unitHist(it.uid,ok,ms,false);logDay('m',ok)}
+      else onWriteAnswer(it,ok,ms,info);
+    },
+    done:(res,stopped)=>results('きょうの けっか',res,stopped)});
+}
+function kanjiTest(){
+  const r={};let g=1,queue=shuffle(KJ[1]).slice(0,10);
+  runQuiz({title:'かんじ レベルテスト',total:res=>Math.max(res.length+queue.length,g*10),
+    next(){
+      if(queue.length)return mkKanji(queue.shift());
+      const sc=r[g];if(!sc||g===4||sc.c/sc.n<.5)return null;
+      g++;queue=shuffle(KJ[g]).slice(0,10);return mkKanji(queue.shift());
+    },
+    onAnswer(it,ok){const x=r[it.g]||(r[it.g]={c:0,n:0});x.n++;if(ok)x.c++;onKanjiAnswer(it,ok)},
+    done(res,stopped){if(res.length){st.kt={r,date:todayStr(),done:!stopped};save()}results('かんじ レベルテスト',res,stopped)}});
+}
+function mathTest(){
+  if(st.mt&&st.mt.done)st.mt=null;
+  const u=(st.mt&&st.mt.u)||{};st.mt={u,date:todayStr(),done:false};
+  let ui=UNITS.findIndex(x=>!(u[x.id]&&u[x.id].f));if(ui<0)ui=0;let fails=0;
+  const finish=un=>{const x=u[un.id];x.f=true;const s=st.units[un.id]||(st.units[un.id]={h:[],t:[],m:false});
+    x.slow=!!(un.fast&&x.n&&x.ms/x.n/1000>un.fast);s.m=x.c===x.n&&!x.slow;fails=x.c/x.n<.5?fails+1:0};
+  runQuiz({title:'さんすう レベルテスト',total:res=>res.length+Math.max(1,(UNITS.length-ui)*2),
+    next(){
+      while(ui<UNITS.length){
+        const un=UNITS[ui],x=u[un.id]||(u[un.id]={c:0,n:0,ms:0});
+        if(!x.f&&(x.n<2||(x.n===2&&x.c===1)))return mkMath(un);
+        if(!x.f)finish(un);
+        ui++;if(fails>=3)return null;
+      }
+      return null;
+    },
+    onAnswer(it,ok,ms){const x=u[it.uid];x.n++;x.ms+=ms;if(ok)x.c++;unitHist(it.uid,ok,ms,true);logDay('m',ok)},
+    done(res,stopped){st.mt.done=!stopped;st.mt.date=todayStr();save();results('さんすう レベルテスト',res,stopped)}});
+}
+
+/* ---------- screens ---------- */
+function topBar(){
+  const s=streak();
+  return `<div class="top"><div class="brand"><b>まなびノート</b><span>かんじ・さんすう</span></div>
+    <div class="row"><span class="pill">れんぞく <b>${s}</b> 日</span><button class="btn small" id="toParent">おうちの人へ</button></div></div>`;
+}
+function bindTop(){document.getElementById('toParent').onclick=parent}
+function weekStrip(){
+  const d=new Date();d.setDate(d.getDate()-6);const names='日月火水木金土';let h='';
+  for(let i=0;i<7;i++){const s=todayStr(d),x=st.days[s],on=x&&x.n>=10;
+    h+=`<div><span class="dot${on?' on':''}">${on?hanamaru(38):x&&x.n?'<b style="color:var(--gold)">△</b>':''}</span>${names[d.getDay()]}</div>`;d.setDate(d.getDate()+1)}
+  return `<div class="week">${h}</div>`;
+}
+function home(){
+  cur='home';
+  const kl=kanjiLevel(),tu=targetUnit(),dueN=Object.values(st.kanji).filter(s=>s.due<=TODAY()).length;
+  const ktDone=st.kt&&st.kt.done,mtDone=st.mt&&st.mt.done;
+  const testCard=(!ktDone||!mtDone)?`<div class="card"><h2>まずは レベルテスト</h2><p class="muted">いまの 力を しらべて、ちょうど いい もんだいを 出すよ。とちゅうで やめても だいじょうぶ。</p>
+    <div class="grid2"><button class="btn big${ktDone?'':' primary'}" id="kt">かんじ テスト ${ktDone?'（すんだ）':'（やく10分）'}</button>
+    <button class="btn big${!ktDone||mtDone?'':' primary'}" id="mt">さんすう テスト ${mtDone?'（すんだ）':st.mt&&st.mt.u&&Object.keys(st.mt.u).length?'（つづきから）':'（やく20分）'}</button></div></div>`:'';
+  const today=st.days[todayStr()];
+  app.innerHTML=`${topBar()}
+    <div class="card hero"><div class="row" style="justify-content:space-between"><div><h1>きょうの れんしゅう</h1>
+      <p class="muted">かんじの よみ 10もん ＋ さんすう 8もん（やく15分）${dueN?`・ふくしゅう ${dueN}こ`:''}</p></div>
+      ${today&&today.n?`<span class="pill">きょうは ${today.n}もん やったよ</span>`:''}</div>
+      <button class="btn primary big" id="daily">はじめる</button></div>
+    ${testCard}
+    <div class="grid3">
+      <button class="card tile" id="pk"><span class="k">読</span><h3>かんじの よみ</h3><span class="muted">${st.kt?`${kl?kl+'年生まで ばっちり':'1年生から'}・${Math.min(4,kl+1)}年生を れんしゅう`:'テストの あとに おすすめが 出るよ'}</span></button>
+      <button class="card tile" id="pm"><span class="k">算</span><h3>さんすう</h3><span class="muted">${tu?`いま：${tu.g}年 ${tu.ja}`:'ぜんぶ クリア！'}</span></button>
+      <button class="card tile" id="pw"${writable()?'':' disabled'}><span class="k">書</span><h3>かんじを かこう</h3><span class="muted">${writable()?'ペンで 5もん':'よみを おぼえたら できるよ'}</span></button>
+    </div>
+    <div class="card"><h3>この 1しゅうかん</h3>${weekStrip()}<p class="en">10もん いじょう やった 日に はなまる</p></div>`;
+  bindTop();
+  document.getElementById('daily').onclick=()=>practice(['k','m']);
+  document.getElementById('pk').onclick=()=>practice(['k']);
+  document.getElementById('pm').onclick=()=>practice(['m']);
+  document.getElementById('pw').onclick=()=>{if(writable())practice(['w'])};
+  const kt=document.getElementById('kt'),mt=document.getElementById('mt');
+  if(kt)kt.onclick=()=>{if(!ktDone)kanjiTest()};
+  if(mt)mt.onclick=()=>{if(!mtDone)mathTest()};
+}
+function results(title,res,stopped){
+  cur='results';
+  const n=res.length,c=res.filter(r=>r.ok).length,rate=n?c/n:0;
+  const miss=res.filter(r=>!r.ok);
+  const kmiss=[...new Map(miss.filter(r=>r.item.kind!=='math').map(r=>[r.item.k,r.item])).values()];
+  const mmiss=miss.filter(r=>r.item.kind==='math');
+  let extra='';
+  if(title.includes('かんじ レベル')&&st.kt){const kl=kanjiLevel();extra=`<p>${kl?`<b>${kl}年生</b>の かんじまで よく 読めているよ。`:''}これからは <b>${Math.min(4,kl+1)}年生</b>の かんじを 中心に れんしゅうしよう。</p>`}
+  if(title.includes('さんすう レベル')){const t=targetUnit();extra=`<p>${t?`まずは <b>${t.g}年「${t.ja}」</b> から れんしゅうしよう。`:'ぜんぶの たんげんが できていたよ！'}</p>`}
+  app.innerHTML=`${topBar()}<div class="card"><h2>${esc(title)}${stopped?'（とちゅうまで）':''}</h2>
+    <div class="score">${n&&rate>=.8?`<span class="popin">${hanamaru(110)}</span>`:''}<div><div class="big">${c} / ${n}</div><p class="muted">${n?rate>=.8?'すごい！ よく できました':rate>=.5?'いい ちょうし！ まちがえた ところを もう一回':'だいじょうぶ、くりかえせば おぼえられるよ':'まだ もんだいを といていないよ'}</p></div></div>${extra}</div>
+    ${kmiss.length?`<div class="card"><h3>もう一回 見ておこう（かんじ）</h3><div class="misslist">${kmiss.map(i=>`<span class="miss"><b>${esc(i.w)}</b>${esc(i.r)}</span>`).join('')}</div></div>`:''}
+    ${mmiss.length?`<div class="card"><h3>まちがえた けいさん</h3><div class="misslist">${mmiss.map(r=>`<span class="miss">${r.item.q.replace(/<rt>.*?<\/rt>/g,'')} → ${r.item.sol}</span>`).join('')}</div></div>`:''}
+    <div class="row"><button class="btn primary big" id="back">ホームへ</button></div>`;
+  bindTop();document.getElementById('back').onclick=home;
+}
+let confirmFor=null;
+function parent(){
+  cur='parent';
+  const t=TODAY();
+  const kRows=[1,2,3,4].map(g=>{const tot=KJ[g].length;let kn=0,lr=0;for(const o of KJ[g]){const s=st.kanji[o.k];if(!s)continue;if(s.b>=3)kn++;else lr++}
+    const tr=st.kt&&st.kt.r[g];
+    return `<div class="kbar"><span>${g}年生</span><div class="stack" role="img" aria-label="${g}年生 ${tot}字中 読める${kn} 練習中${lr}"><i style="width:${kn/tot*100}%;background:var(--ok)"></i><i style="width:${lr/tot*100}%;background:var(--gold)"></i></div><span>${kn} / ${tot}字${tr?` <span class="muted">(テスト ${tr.c}/${tr.n})</span>`:''}</span></div>`}).join('');
+  const uRows=UNITS.map(u=>{const s=st.units[u.id],x=st.mt&&st.mt.u&&st.mt.u[u.id];
+    let chip='<span class="chip n">まだ</span>';
+    if(s&&s.m)chip='<span class="chip m">できた</span>';else if(s&&s.h.length)chip='<span class="chip l">練習中</span>';
+    const acc=s&&s.h.length?Math.round(avg(s.h)*100)+'%':'—',tm=s&&s.t.length?avg(s.t).toFixed(1)+'秒':'—';
+    const slow=x&&x.slow?' <span class="chip s">遅め</span>':'';
+    return `<tr><td>${u.g}年</td><td>${u.ja}<div class="en">${u.en}</div></td><td>${chip}${slow}</td><td>${acc}</td><td>${tm}</td><td>${x&&x.n?`${x.c}/${x.n}`:'—'}</td></tr>`}).join('');
+  const hard=Object.entries(st.kanji).filter(([k,s])=>s.w>0&&KINFO[k]).sort((a,b)=>b[1].w-a[1].w||a[1].b-b[1].b).slice(0,16);
+  const days=[];{const d=new Date();d.setDate(d.getDate()-13);for(let i=0;i<14;i++){days.push(todayStr(d));d.setDate(d.getDate()+1)}}
+  const maxN=Math.max(10,...days.map(s=>st.days[s]?st.days[s].n:0));
+  const bars=days.map((s,i)=>{const x=st.days[s];const h=x?Math.max(3,x.n/maxN*80):0;return `<rect x="${i*30+6}" y="${90-h}" width="18" height="${h}" rx="3" fill="var(--accent)"/><text x="${i*30+15}" y="106" font-size="10" text-anchor="middle" fill="var(--muted)">${+s.slice(8)}</text>`}).join('');
+  const total=sum(Object.values(st.days).map(x=>x.n)),okAll=sum(Object.values(st.days).map(x=>x.ok));
+  const sync=!storeOk?'この端末に保存できません（プライベートブラウズでは保存されません）':'記録はこのiPadの中に保存しています'+(standalone()?'（ホーム画面から起動中）':'。Safariの共有ボタン→「ホーム画面に追加」から使うと、記録が消えにくくなります');
+  const last=st.lastBackup?`前回のバックアップ：${st.lastBackup}`:'まだバックアップしていません';
+  const cf=k=>confirmFor===k?`<div class="confirm"><span>本当に やりなおしますか？ ${k==='all'?'すべての記録が消えます。':'テストの結果だけ消えます（練習の記録は残ります）。'}</span><button class="btn small primary" data-yes="${k}">はい</button><button class="btn small" data-no="1">やめる</button></div>`:'';
+  app.innerHTML=`<div class="top"><div class="brand"><b>おうちの人へ</b><span>学習の記録</span></div><button class="btn small" id="home">← こどもの画面</button></div>
+    <div class="grid3">
+      <div class="card"><span class="muted">漢字（読み）</span><h2>${st.kt?kanjiLevel()?kanjiLevel()+'年生まで定着':'1年生から':'テスト前'}</h2><span class="en">${st.kt?'テスト日 '+st.kt.date:'レベルテスト未実施'}</span></div>
+      <div class="card"><span class="muted">算数 いまの単元</span><h2>${targetUnit()?targetUnit().g+'年 '+targetUnit().ja:'全単元クリア'}</h2><span class="en">${st.mt?'テスト日 '+st.mt.date+(st.mt.done?'':'（途中）'):'レベルテスト未実施'}</span></div>
+      <div class="card"><span class="muted">これまで</span><h2>${total}問・正答率 ${total?Math.round(okAll/total*100):0}%</h2><span class="en">連続 ${streak()}日</span></div>
+    </div>
+    <div class="card"><h3>漢字の読み（学年別）</h3>${kRows}
+      <div class="legend"><span><i style="background:var(--ok)"></i>読める（3回目以降の正解が続いている）</span><span><i style="background:var(--gold)"></i>練習中</span><span><i style="background:var(--line)"></i>まだ出していない</span></div>
+      <p class="en">間違えた漢字は 翌日→3日後→1週間後… と間隔をあけて また出ます。</p></div>
+    ${hard.length?`<div class="card"><h3>間違えが多い漢字</h3><div class="misslist">${hard.map(([k,s])=>`<span class="miss"><b>${esc(KINFO[k].w)}</b>${esc(KINFO[k].r)} <span class="muted">×${s.w}</span></span>`).join('')}</div></div>`:''}
+    <div class="card"><h3>算数（単元別）</h3><div class="tablewrap"><table><thead><tr><th>学年</th><th>単元</th><th>状態</th><th>直近の正答率</th><th>平均時間</th><th>テスト</th></tr></thead><tbody>${uRows}</tbody></table></div>
+      <p class="en">「できた」= 直近8問で7問以上正解。たし算・ひき算・九九・わり算は 1問あたりの時間も見ています（遅めだと「できた」になりません）。</p></div>
+    <div class="card"><h3>この2週間</h3><div class="tablewrap"><svg viewBox="0 0 420 112" width="100%" style="max-width:640px;min-width:320px" role="img" aria-label="日ごとの問題数"><line x1="0" y1="90" x2="420" y2="90" stroke="var(--line)"/>${bars}</svg></div><p class="en">1日あたりの問題数（目安 18問）</p></div>
+    <div class="card"><h3>設定</h3>
+      <button class="toggle" id="enT"><span class="sw${st.en?' on':''}"></span><span>英語のヒントを表示する（UWCで英語で習っている用語の補助）</span></button>
+      <p class="en">${sync}</p></div>
+    <div class="card"><h3>バックアップ</h3>
+      <p class="muted">iPadを買い替えるときや、念のための控えに。月に1回くらいファイルに保存しておくと安心です。</p>
+      <div class="row"><button class="btn small primary" id="bkSave">ファイルに保存</button><button class="btn small" id="bkCopy">コピーする</button><label class="btn small" for="bkFile">ファイルから読み込む</label><input type="file" id="bkFile" accept=".json,application/json,text/plain" hidden></div>
+      <p class="en">${last}</p>
+      ${backupMsg?`<p class="${backupMsg.startsWith('×')?'fb ng':'fb ok'}">${esc(backupMsg)}</p>`:''}
+      ${pendingRestore?`<div class="confirm"><span>このバックアップ（${esc(pendingRestore.when)}）で 今の記録を上書きしますか？</span><button class="btn small primary" id="rsYes">上書きする</button><button class="btn small" id="rsNo">やめる</button></div>`:''}</div>
+    <div class="card"><h3>やりなおし</h3>
+      <div class="row"><button class="btn small" data-reset="kt">漢字テストをやりなおす</button><button class="btn small" data-reset="mt">算数テストをやりなおす</button><button class="btn small" data-reset="all">すべての記録を消す</button></div>
+      ${cf('kt')}${cf('mt')}${cf('all')}</div>`;
+  document.getElementById('home').onclick=()=>{confirmFor=null;backupMsg='';pendingRestore=null;home()};
+  document.getElementById('enT').onclick=()=>{st.en=!st.en;save();parent()};
+  const stamp=()=>{st.lastBackup=todayStr();save()};
+  document.getElementById('bkSave').onclick=()=>{
+    const blob=new Blob([backupText()],{type:'application/json'}),name=`manabi-backup-${todayStr()}.json`;
+    const file=window.File?new File([blob],name,{type:'application/json'}):null;
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:name}).then(()=>{stamp();backupMsg='○ 保存しました';parent()}).catch(()=>{})}
+    else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);stamp();backupMsg='○ ファイルを書き出しました';parent()}
+  };
+  document.getElementById('bkCopy').onclick=()=>{
+    navigator.clipboard.writeText(backupText()).then(()=>{stamp();backupMsg='○ コピーしました。メモアプリなどに貼りつけて保存してください';parent()}).catch(()=>{backupMsg='× コピーできませんでした。「ファイルに保存」を使ってください';parent()});
+  };
+  document.getElementById('bkFile').onchange=e=>{
+    const f=e.target.files&&e.target.files[0];if(!f)return;
+    f.text().then(t=>{try{const o=JSON.parse(t);const d=o.app==='manabi-note'?o.data:o;if(!d||!d.kanji||!d.units)throw 0;pendingRestore={text:t,when:o.saved?o.saved.slice(0,10):'日付不明'};backupMsg=''}catch(_){pendingRestore=null;backupMsg='× まなびノートのバックアップファイルではないようです'}parent()});
+  };
+  const rsYes=document.getElementById('rsYes');
+  if(rsYes){rsYes.onclick=()=>{try{restoreFrom(pendingRestore.text);backupMsg='○ 読み込みました'}catch(_){backupMsg='× 読み込めませんでした'}pendingRestore=null;parent()};
+    document.getElementById('rsNo').onclick=()=>{pendingRestore=null;parent()}}
+  app.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>{confirmFor=b.dataset.reset;parent()});
+  app.querySelectorAll('[data-no]').forEach(b=>b.onclick=()=>{confirmFor=null;parent()});
+  app.querySelectorAll('[data-yes]').forEach(b=>b.onclick=()=>{const k=b.dataset.yes;
+    if(k==='kt')st.kt=null;else if(k==='mt')st.mt=null;else{const en=st.en;st=fresh();st.en=en}
+    confirmFor=null;save();parent()});
+}
+home();
+</script>
+</body>
+</html>
