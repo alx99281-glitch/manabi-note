@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="まなびノート">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#F3F7F9">
+<meta name="theme-color" content="#F6F2FB">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
@@ -18,19 +18,19 @@
 <style>
 /* Layout: one centered graph-paper notebook column (max 980px); quiz screens split into question | scratch pad on wide tablets, stacked when narrow */
 :root{
-  --paper:#F3F7F9; --grid:#E1E9EF; --card:#FFFFFF; --ink:#1E2A3A; --muted:#5B6B7D; --line:#D3DDE6;
-  --accent:#1F6F63; --accent-ink:#FFFFFF; --accent-soft:#DDEFEA;
+  --paper:#F6F2FB; --grid:#E8E0F3; --card:#FFFFFF; --ink:#261F38; --muted:#675C7E; --line:#DCD2EA;
+  --accent:#6A3FA8; --accent-ink:#FFFFFF; --accent-soft:#EEE5F9;
   --gold:#B97C10; --red:#D9433A; --ok:#2E8B57; --ok-soft:#E2F3E8; --ng-soft:#FBE6E4; --mark:#F6D776;
   --f-ui:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
   --f-kanji:"Klee One","Hiragino Mincho ProN","Yu Mincho",serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --paper:#14201E; --grid:#1C2B28; --card:#1B2826; --ink:#E7EEEA; --muted:#9FB2AC; --line:#2C3D39;
-  --accent:#5CC2AE; --accent-ink:#0D1A17; --accent-soft:#1F3A35;
+  --paper:#18131F; --grid:#221B2C; --card:#211A2B; --ink:#EEE8F6; --muted:#AEA2C3; --line:#3A3049;
+  --accent:#B99BEA; --accent-ink:#1A1126; --accent-soft:#33284A;
   --gold:#E3B04B; --red:#F07167; --ok:#5FD08A; --ok-soft:#1D3527; --ng-soft:#3A2321; --mark:#6B5A1E; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --paper:#14201E; --grid:#1C2B28; --card:#1B2826; --ink:#E7EEEA; --muted:#9FB2AC; --line:#2C3D39;
-  --accent:#5CC2AE; --accent-ink:#0D1A17; --accent-soft:#1F3A35;
+  --paper:#18131F; --grid:#221B2C; --card:#211A2B; --ink:#EEE8F6; --muted:#AEA2C3; --line:#3A3049;
+  --accent:#B99BEA; --accent-ink:#1A1126; --accent-soft:#33284A;
   --gold:#E3B04B; --red:#F07167; --ok:#5FD08A; --ok-soft:#1D3527; --ng-soft:#3A2321; --mark:#6B5A1E; color-scheme:dark}
 [hidden]{display:none!important}
 *,*::before,*::after{box-sizing:border-box}
@@ -109,7 +109,12 @@ button:disabled{opacity:.45;cursor:default}
 .keypad button{min-height:58px;border-radius:10px;border:2px solid var(--line);background:var(--card);font-size:1.5rem;font-weight:700}
 .keypad button:active{background:var(--accent-soft)}
 .padwrap{display:flex;flex-direction:column;gap:8px}
-.padhead{display:flex;justify-content:space-between;align-items:center;font-size:.9rem;color:var(--muted)}
+.padhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:.9rem;color:var(--muted)}
+.padtools{display:flex;gap:8px;justify-content:center}
+.padtools .btn{min-height:44px;gap:6px}
+.padtools .btn:disabled{opacity:.4}
+.cheer{font-size:1.35rem;color:var(--accent)}
+.cheer small{display:block;font-size:.85rem;color:var(--muted);font-weight:700}
 canvas.pad{width:100%;height:380px;border-radius:12px;border:2px solid var(--line);background-color:var(--card);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;touch-action:none;display:block}
 .wrow{display:flex;gap:18px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
 .wbox{position:relative;width:min(320px,80vw);aspect-ratio:1;max-width:100%;border:3px solid var(--ink);border-radius:6px;background:var(--card)}
@@ -348,16 +353,35 @@ const writable=()=>ALLK.some(o=>st.kanji[o.k]&&st.kanji[o.k].b>=2);
 
 /* ---------- drawing pad (Apple Pencil: once a pen is seen, finger touches are ignored) ---------- */
 function makePad(cv,scale=1){
-  const ctx=cv.getContext('2d');let pen=false,drawing=false,last=null,rect=null;
-  function size(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()||'#1E2A3A'}
+  const ctx=cv.getContext('2d');let pen=false,drawing=false,last=null,rect=null,strokes=[],line=null,onChange=()=>{};
+  function size(){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()||'#261F38'}
   size();
+  const seg=s=>{ctx.lineWidth=s[4];ctx.beginPath();ctx.moveTo(s[0],s[1]);ctx.lineTo(s[2],s[3]);ctx.stroke()};
+  const wipe=()=>{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.restore()};
   const pos=e=>[e.clientX-rect.left,e.clientY-rect.top];
-  cv.addEventListener('pointerdown',e=>{if(e.pointerType==='pen')pen=true;if(pen&&e.pointerType==='touch')return;rect=cv.getBoundingClientRect();drawing=true;last=pos(e);try{cv.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()});
-  cv.addEventListener('pointermove',e=>{if(!drawing||(pen&&e.pointerType==='touch'))return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
-    for(const ev of evs){const p=pos(ev);ctx.lineWidth=(ev.pointerType==='pen'?1.6+(ev.pressure||.5)*3.4:3)*scale;ctx.beginPath();ctx.moveTo(last[0],last[1]);ctx.lineTo(p[0],p[1]);ctx.stroke();last=p}e.preventDefault()});
-  const end=()=>{drawing=false};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
-  return{clear(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.restore()}};
+  cv.addEventListener('pointerdown',e=>{if(e.pointerType==='pen')pen=true;if(pen&&e.pointerType==='touch')return;rect=cv.getBoundingClientRect();drawing=true;last=pos(e);line=[];try{cv.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault()});
+  cv.addEventListener('pointermove',e=>{if(!drawing||(pen&&e.pointerType==='touch'))return;let evs=e.getCoalescedEvents?e.getCoalescedEvents():[];if(!evs.length)evs=[e];
+    for(const ev of evs){const p=pos(ev),s=[last[0],last[1],p[0],p[1],(ev.pointerType==='pen'?1.6+(ev.pressure||.5)*3.4:3)*scale];seg(s);line.push(s);last=p}e.preventDefault()});
+  const end=()=>{if(drawing&&line&&line.length){strokes.push(line);onChange(strokes.length)}drawing=false;line=null};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+  return{
+    clear(){strokes=[];wipe();onChange(0)},
+    undo(){strokes.pop();wipe();strokes.forEach(l=>l.forEach(seg));onChange(strokes.length)},
+    set onChange(f){onChange=f;f(strokes.length)}};
 }
+/* wires the "1つ もどす" / "ぜんぶ けす" buttons to a pad and greys them out when there is nothing to erase */
+function bindPadTools(pad,undoBtn,clrBtn){
+  undoBtn.onclick=()=>pad.undo();clrBtn.onclick=()=>pad.clear();
+  pad.onChange=n=>{undoBtn.disabled=clrBtn.disabled=!n};
+}
+/* praise for a correct answer; never the same line twice in a row, with a bonus line on streaks */
+const CHEERS=['凛ちゃん すごい！','リンリン おめでとう！','凛ちゃん、せいかい！','リンリン ばっちり！','さすが 凛ちゃん！','やったね、リンリン！','凛ちゃん、てんさい！','リンリン、かんぺき！','凛ちゃん、そのちょうし！','リンリン、すばらしい！'];
+let lastCheer=-1;
+function cheer(streak){
+  let i;do i=Math.floor(Math.random()*CHEERS.length);while(i===lastCheer);lastCheer=i;
+  const bonus=streak>=10&&streak%5===0?`${streak}もん れんぞく！ 凛ちゃん とまらない！`:streak>=3?`${streak}もん れんぞく せいかい！`:'';
+  return `<span class="cheer">${CHEERS[i]}${bonus?`<small>${bonus}</small>`:''}</span>`;
+}
+const padTools=(u,c)=>`<div class="padtools"><button class="btn small" id="${u}"><span aria-hidden="true">↶</span>1つ もどす</button><button class="btn small" id="${c}"><span aria-hidden="true">🗑</span>ぜんぶ けす</button></div>`;
 
 function hanamaru(size=110){
   const c=60;let d='';
@@ -373,6 +397,7 @@ function hanamaru(size=110){
 function runQuiz(opt){
   cur='quiz';const res=[];let item=null,t0=0,locked=false;
   function step(){item=opt.next(res);if(!item){opt.done(res,false);return}locked=false;t0=performance.now();draw();window.scrollTo(0,0)}
+  const streak=()=>{let n=0;for(let i=res.length-1;i>=0&&res[i].ok;i--)n++;return n};
   function record(ok,info){const ms=performance.now()-t0;res.push({item,ok,ms,info});opt.onAnswer(item,ok,ms,info);save()}
   function head(){const tot=Math.max(opt.total(res),res.length+1),pct=Math.round(res.length/tot*100);
     return `<div class="qhead"><button class="btn small quit" id="quit" aria-label="とちゅうで やめる"><span aria-hidden="true">✕</span>やめる</button><div class="bar"><i style="width:${pct}%"></i></div><span class="num">${res.length+1} / ${tot}</span></div>`}
@@ -398,7 +423,7 @@ function runQuiz(opt){
       if(!ok&&i>=0)b.classList.add('ng');
       record(ok);
       const fb=document.getElementById('fb');
-      if(ok){fb.className='fb ok popin';fb.textContent='せいかい！';setTimeout(step,750)}
+      if(ok){fb.className='fb ok popin';fb.innerHTML=cheer(streak());setTimeout(step,1300)}
       else{fb.className='fb ng';fb.innerHTML=`<span>「${esc(item.w)}」は「${esc(item.r)}」</span><button class="btn primary" id="nx">つぎへ</button>`;document.getElementById('nx').onclick=step}
     })}
   let vals=[],act=0;
@@ -418,10 +443,10 @@ function runQuiz(opt){
       <div class="keypad">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-k="${k}" aria-label="${k==='⌫'?'1文字けす':k}">${k}</button>`).join('')}</div>
       <button class="btn primary big" id="chk">こたえあわせ</button>
       <div class="fb" id="fb"></div></div>
-      <div class="card padwrap"><div class="padhead"><span>けいさんメモ（ペンで かいてね）</span><button class="btn small" id="clr">ぜんぶ けす</button></div><canvas class="pad" id="pad"></canvas></div></div>`}
+      <div class="card padwrap"><div class="padhead"><span>けいさんメモ（ペンで かいてね）</span>${padTools('undo','clr')}</div><canvas class="pad" id="pad"></canvas></div></div>`}
   function paintBoxes(){app.querySelectorAll('.abox').forEach(b=>{const i=+b.dataset.i;b.textContent=vals[i];b.classList.toggle('act',i===act)})}
   function bindMath(){
-    const pad=makePad(document.getElementById('pad'));document.getElementById('clr').onclick=pad.clear;
+    const pad=makePad(document.getElementById('pad'));bindPadTools(pad,document.getElementById('undo'),document.getElementById('clr'));
     app.querySelectorAll('.abox').forEach(b=>b.onclick=()=>{act=+b.dataset.i;paintBoxes()});
     app.querySelectorAll('.keypad button').forEach(b=>b.onclick=()=>{if(locked)return;const k=b.dataset.k;let v=vals[act];
       if(k==='⌫')v=v.slice(0,-1);else if(k==='.'){if(item.type==='num'&&!v.includes('.'))v=(v||'0')+'.'}else if(v.length<9)v=(v==='0'?'':v)+k;
@@ -434,7 +459,7 @@ function runQuiz(opt){
       else if(item.type==='pair')ok=+vals[0]===item.ans[0]&&+vals[1]===item.ans[1];
       else{const n=+vals[0],d=+vals[1];ok=d>0&&n*item.ans[1]===item.ans[0]*d}
       locked=true;record(ok);
-      if(ok){fb.className='fb ok popin';fb.textContent='せいかい！';setTimeout(step,800)}
+      if(ok){fb.className='fb ok popin';fb.innerHTML=cheer(streak());setTimeout(step,1300)}
       else{fb.className='fb ng';fb.innerHTML=`<span>こたえは ${item.sol}</span><button class="btn primary" id="nx">つぎへ</button>`;document.getElementById('nx').onclick=step}
     }}
   function writeView(it){
@@ -443,13 +468,16 @@ function runQuiz(opt){
       <div class="yomi">${esc(it.r)}</div><div class="word" style="font-size:clamp(2.4rem,8vw,4rem)">${blank}</div>
       <div class="wrow"><div class="wbox"><div class="ghost" id="ghost" hidden>${esc(it.k)}</div><canvas id="wpad"></canvas></div>
       <div class="model" id="model" hidden><span class="muted">おてほん</span><b>${esc(it.k)}</b></div></div>
-      <div class="row" style="justify-content:center"><button class="btn" id="wclr">けす</button><button class="btn primary" id="show">こたえを みる</button></div>
+      ${padTools('wundo','wclr')}
+      <div class="row" style="justify-content:center"><button class="btn primary" id="show">こたえを みる</button></div>
       <div id="grade" hidden><p class="prompt" style="text-align:center;margin-bottom:8px">じぶんで まるつけ しよう</p>
-      <div class="grade3"><button data-g="2">◎ かけた</button><button data-g="1">△ おしい</button><button data-g="0">× まだ</button></div></div></div>`}
+      <div class="grade3"><button data-g="2">◎ かけた</button><button data-g="1">△ おしい</button><button data-g="0">× まだ</button></div></div>
+      <div class="fb" id="fb" style="justify-content:center"></div></div>`}
   function bindWrite(){
-    const pad=makePad(document.getElementById('wpad'),2.2);document.getElementById('wclr').onclick=pad.clear;
+    const pad=makePad(document.getElementById('wpad'),2.2);bindPadTools(pad,document.getElementById('wundo'),document.getElementById('wclr'));
     document.getElementById('show').onclick=()=>{document.getElementById('model').hidden=false;document.getElementById('ghost').hidden=false;document.getElementById('grade').hidden=false;document.getElementById('show').hidden=true};
-    app.querySelectorAll('#grade button').forEach(b=>b.onclick=()=>{if(locked)return;locked=true;record(b.dataset.g==='2',+b.dataset.g);step()});
+    app.querySelectorAll('#grade button').forEach(b=>b.onclick=()=>{if(locked)return;locked=true;const ok=b.dataset.g==='2';record(ok,+b.dataset.g);
+      if(ok){const fb=document.getElementById('fb');fb.className='fb ok popin';fb.innerHTML=cheer(streak());setTimeout(step,1300)}else step()});
   }
   step();
 }
@@ -560,7 +588,7 @@ function results(title,res,stopped){
   if(title.includes('かんじ レベル')&&st.kt){const kl=kanjiLevel();extra=`<p>${kl?`<b>${kl}年生</b>の かんじまで よく 読めているよ。`:''}これからは <b>${Math.min(4,kl+1)}年生</b>の かんじを 中心に れんしゅうしよう。</p>`}
   if(title.includes('さんすう レベル')){const t=targetUnit();extra=`<p>${t?`まずは <b>${t.g}年「${t.ja}」</b> から れんしゅうしよう。`:'ぜんぶの たんげんが できていたよ！'}</p>`}
   app.innerHTML=`${topBar()}<div class="card"><h2>${esc(title)}${stopped?'（とちゅうまで）':''}</h2>
-    <div class="score">${n&&rate>=.8?`<span class="popin">${hanamaru(110)}</span>`:''}<div><div class="big">${c} / ${n}</div><p class="muted">${n?rate>=.8?'すごい！ よく できました':rate>=.5?'いい ちょうし！ まちがえた ところを もう一回':'だいじょうぶ、くりかえせば おぼえられるよ':'まだ もんだいを といていないよ'}</p></div></div>${extra}</div>
+    <div class="score">${n&&rate>=.8?`<span class="popin">${hanamaru(110)}</span>`:''}<div><div class="big">${c} / ${n}</div><p class="muted">${n?rate>=.8?'凛ちゃん すごい！ よく できました':rate>=.5?'いい ちょうし！ まちがえた ところを もう一回':'だいじょうぶ、くりかえせば おぼえられるよ':'まだ もんだいを といていないよ'}</p></div></div>${extra}</div>
     ${kmiss.length?`<div class="card"><h3>もう一回 見ておこう（かんじ）</h3><div class="misslist">${kmiss.map(i=>`<span class="miss"><b>${esc(i.w)}</b>${esc(i.r)}</span>`).join('')}</div></div>`:''}
     ${mmiss.length?`<div class="card"><h3>まちがえた けいさん</h3><div class="misslist">${mmiss.map(r=>`<span class="miss">${r.item.q.replace(/<rt>.*?<\/rt>/g,'')} → ${r.item.sol}</span>`).join('')}</div></div>`:''}
     <div class="row"><button class="btn primary big" id="back">ホームへ</button></div>`;
