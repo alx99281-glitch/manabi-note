@@ -129,8 +129,24 @@ canvas.pad{width:100%;height:380px;border-radius:12px;border:2px solid var(--lin
 .wcard .word .wans{color:var(--red)}
 .wcard .padtools{flex-wrap:wrap}
 @media (orientation:portrait),(max-width:760px){
-  .wcard{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "box" "ctrl";--wb:clamp(220px,min(calc(100vh - 560px),86vw),520px);--wb:clamp(220px,min(calc(100dvh - 560px),86vw),520px)}
+  .wcard{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "box" "ctrl";--wb:clamp(220px,min(calc(100vh - 610px),86vw),520px);--wb:clamp(220px,min(calc(100dvh - 610px),86vw),520px)}
   .wcard .whead,.wcard .wctrl{align-self:auto}}
+.wact{justify-content:center}
+.wres{display:flex;gap:16px;align-items:center;justify-content:center}
+.sobtn{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;padding:0;color:var(--muted);font-size:.8rem;font-weight:700}
+.sofig{width:160px;height:160px;border:2px solid var(--line);border-radius:8px;background:var(--card)}
+.sofig path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.sofig .sog{stroke:var(--line);stroke-width:.6;stroke-dasharray:2 2}
+.sofig .sobg{stroke:var(--line);stroke-width:3.2}
+.sofig .sos{stroke:var(--ink);stroke-width:3.2}
+.sofig .sos.bad{stroke:var(--red)}
+.sofig .sn{font-size:8px;font-weight:700;fill:var(--accent);font-family:var(--f-ui)}
+.sofig .sn.bad{fill:var(--red)}
+.wverdict{display:flex;flex-direction:column;gap:8px;align-items:flex-start;min-width:0}
+.vmark{font-size:2.6rem;line-height:1;font-weight:700}
+.vmark.g2{color:var(--red)} .vmark.g1{color:var(--gold)} .vmark.g0{color:var(--muted)}
+.vmsg{font-weight:700;line-height:1.5} .vmsg.ng small{color:var(--muted)}
+.wverdict .row{gap:8px}.wverdict .btn{min-height:48px;padding:0 16px}
 .wbox{position:relative;width:var(--wb,min(320px,80vw));aspect-ratio:1;max-width:100%;border:3px solid var(--ink);border-radius:6px;background:var(--card)}
 .wbox::before,.wbox::after{content:"";position:absolute;pointer-events:none}
 .wbox::before{left:50%;top:0;bottom:0;border-left:2px dashed var(--line)}
@@ -384,7 +400,12 @@ function makePad(cv,scale=1){
   return{
     clear(){strokes=[];wipe();onChange(0)},
     undo(){strokes.pop();wipe();strokes.forEach(l=>l.forEach(seg));onChange(strokes.length)},
-    set onChange(f){onChange=f;f(strokes.length)}};
+    set onChange(f){onChange=f;f(strokes.length)},
+    /* each stroke as a list of [x,y] in CSS px, plus the box width they were drawn in */
+    lines(){return{w:cv.getBoundingClientRect().width,ls:strokes.map(l=>[[l[0][0],l[0][1]],...l.map(s=>[s[2],s[3]])])}},
+    /* redraw with the given strokes in red (indexes into lines()) */
+    mark(bad){const ink=ctx.strokeStyle,red=getComputedStyle(document.documentElement).getPropertyValue('--red').trim()||'#D9433A';wipe();
+      strokes.forEach((l,i)=>{ctx.strokeStyle=bad.has(i)?red:ink;l.forEach(seg)});ctx.strokeStyle=ink}};
 }
 /* wires the "1つ もどす" / "ぜんぶ けす" buttons to a pad and greys them out when there is nothing to erase */
 function bindPadTools(pad,undoBtn,clrBtn){
@@ -398,6 +419,58 @@ function cheer(streak){
   let i;do i=Math.floor(Math.random()*CHEERS.length);while(i===lastCheer);lastCheer=i;
   const bonus=streak>=10&&streak%5===0?`${streak}もん れんぞく！ 凛ちゃん とまらない！`:streak>=3?`${streak}もん れんぞく せいかい！`:'';
   return `<span class="cheer">${CHEERS[i]}${bonus?`<small>${bonus}</small>`:''}</span>`;
+}
+/* ---------- stroke order + checking (KanjiVG data, CC BY-SA 3.0: paths in a 109×109 box, one per stroke, in order) ---------- */
+let STROKES=null;
+const loadStrokes=()=>STROKES||(STROKES=fetch('strokes.json').then(r=>{if(!r.ok)throw 0;return r.json()}).catch(()=>{STROKES=null;return null}));
+const SVGNS='http://www.w3.org/2000/svg', NPT=24, refCache={};
+function resample(pts,n=NPT){
+  const d=[0];for(let i=1;i<pts.length;i++)d.push(d[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  const L=d[d.length-1],out=[];let j=0;
+  for(let i=0;i<n;i++){const t=L*i/(n-1);while(j<d.length-2&&d[j+1]<t)j++;const span=d[j+1]-d[j]||1,f=Math.min(1,Math.max(0,(t-d[j])/span)),a=pts[j],b=pts[Math.min(j+1,pts.length-1)];out.push([a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f])}
+  return out;
+}
+function refPoints(k,paths){
+  if(refCache[k])return refCache[k];
+  const svg=document.createElementNS(SVGNS,'svg');svg.setAttribute('style','position:absolute;width:0;height:0');document.body.appendChild(svg);
+  const out=paths.map(dd=>{const p=document.createElementNS(SVGNS,'path');p.setAttribute('d',dd);svg.appendChild(p);const L=p.getTotalLength(),pts=[];
+    for(let i=0;i<NPT;i++){const q=p.getPointAtLength(L*i/(NPT-1));pts.push([q.x,q.y])}return pts});
+  svg.remove();return refCache[k]=out;
+}
+const meanDist=(a,b)=>a.reduce((s,p,i)=>s+Math.hypot(p[0]-b[i][0],p[1]-b[i][1]),0)/a.length;
+function bbox(ls){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const l of ls)for(const[x,y]of l){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}return{cx:(x0+x1)/2,cy:(y0+y1)/2,s:Math.max(x1-x0,y1-y0,1)}}
+/* compares the child's strokes with the model, stroke by stroke and in order.
+   Size and position are normalised away (only the shape of the whole kanji matters); each stroke is then
+   ok / drawn backwards / matches a different stroke (order) / wrong shape. 2=◎ all ok, 1=△ one stroke off, 0=× */
+const STROKE_TOL=13;
+function judgeStrokes(ref,drawn){
+  const px=drawn.w/109, user=drawn.ls.filter(l=>{let L=0;for(let i=1;i<l.length;i++)L+=Math.hypot(l[i][0]-l[i-1][0],l[i][1]-l[i-1][1]);return L/px>=2.5});
+  const keep=drawn.ls.map((l,i)=>user.includes(l)?i:-1).filter(i=>i>=0);
+  const r={n:ref.length,m:user.length,rev:[],order:[],shape:[]};
+  if(r.m!==r.n){r.grade=0;r.why='count';r.bad=[];r.badDrawn=new Set();return r}
+  const rb=bbox(ref),ub=bbox(user),sc=rb.s/ub.s;
+  const U=user.map(l=>resample(l).map(([x,y])=>[(x-ub.cx)*sc+rb.cx,(y-ub.cy)*sc+rb.cy]));
+  U.forEach((u,i)=>{
+    if(meanDist(u,ref[i])<=STROKE_TOL)return;
+    if(meanDist([...u].reverse(),ref[i])<=STROKE_TOL)r.rev.push(i);
+    else if(ref.some((q,j)=>j!==i&&meanDist(u,q)<=STROKE_TOL))r.order.push(i);
+    else r.shape.push(i)});
+  const wrong=r.rev.length+r.order.length+r.shape.length;
+  r.grade=wrong===0?2:wrong===1?1:0;r.why=r.order.length?'order':r.rev.length?'rev':r.shape.length?'shape':'';
+  r.bad=[...r.rev,...r.order,...r.shape];r.badDrawn=new Set(r.bad.map(i=>keep[i]));
+  return r;
+}
+/* numbered stroke-order figure; strokes draw themselves one by one (tap to replay). bad = stroke indexes to show in red */
+function strokeFig(paths,bad=[]){
+  const nums=paths.map((d,i)=>{const m=d.match(/M\s*([\d.]+)[ ,]([\d.]+)/);return m?`<text x="${Math.max(4,+m[1]-5).toFixed(1)}" y="${Math.max(9,+m[2]-2).toFixed(1)}" class="sn${bad.includes(i)?' bad':''}">${i+1}</text>`:''}).join('');
+  return `<svg viewBox="0 0 109 109" class="sofig" role="img" aria-label="かきじゅん"><path d="M54.5 0V109M0 54.5H109" class="sog"/>
+    ${paths.map(d=>`<path d="${d}" class="sobg"/>`).join('')}${paths.map((d,i)=>`<path d="${d}" class="sos${bad.includes(i)?' bad':''}"/>`).join('')}${nums}</svg>`;
+}
+function playFig(svg){
+  const ps=[...svg.querySelectorAll('.sos')],ns=[...svg.querySelectorAll('.sn')];
+  ps.forEach((p,i)=>{const L=p.getTotalLength();p.style.strokeDasharray=L;
+    p.animate([{strokeDashoffset:L},{strokeDashoffset:0}],{duration:Math.max(350,L*9),delay:i*750,fill:'both',easing:'ease-in-out'});
+    if(ns[i])ns[i].animate([{opacity:0},{opacity:1}],{duration:200,delay:i*750,fill:'both'})});
 }
 const padTools=(u,c)=>`<div class="padtools"><button class="btn small" id="${u}"><span aria-hidden="true">↶</span>1つ もどす</button><button class="btn small" id="${c}"><span aria-hidden="true">🗑</span>ぜんぶ けす</button></div>`;
 
@@ -487,14 +560,43 @@ function runQuiz(opt){
         <div class="yomi">${esc(it.r)}</div><div class="word" id="wword">${blank}</div></div>
       <div class="wboxwrap"><div class="wbox"><div class="ghost" id="ghost" hidden>${esc(it.k)}</div><canvas id="wpad"></canvas></div></div>
       <div class="wctrl">${padTools('wundo','wclr')}
-        <div class="row" style="justify-content:center"><button class="btn primary big" id="show">こたえを みる</button></div>
+        <div class="row wact" id="wact"><button class="btn primary big" id="wchk" disabled>こたえあわせ</button><button class="btn" id="widk">わからない</button></div>
+        <div class="wres" id="wres" hidden></div>
         <div id="grade" hidden><p class="prompt fb" id="fb" style="justify-content:center;margin:0 0 8px">じぶんで まるつけ しよう</p>
         <div class="grade3"><button data-g="2">◎ かけた</button><button data-g="1">△ おしい</button><button data-g="0">× まだ</button></div></div></div></div>`}
   function bindWrite(){
-    const pad=makePad(document.getElementById('wpad'),2.2);bindPadTools(pad,document.getElementById('wundo'),document.getElementById('wclr'));
-    document.getElementById('show').onclick=()=>{document.getElementById('wword').innerHTML=esc(item.w).replace(esc(item.k),`<span class="wans">${esc(item.k)}</span>`);document.getElementById('ghost').hidden=false;document.getElementById('grade').hidden=false;document.getElementById('show').hidden=true};
-    app.querySelectorAll('#grade button').forEach(b=>b.onclick=()=>{if(locked)return;locked=true;const ok=b.dataset.g==='2';record(ok,+b.dataset.g);
-      if(ok){const fb=document.getElementById('fb');fb.className='fb ok popin';fb.innerHTML=cheer(streak());setTimeout(step,1300)}else step()});
+    const $=id=>document.getElementById(id), it=item;
+    const pad=makePad($('wpad'),2.2);
+    let recorded=false, paths=null;
+    bindPadTools(pad,$('wundo'),$('wclr'));
+    pad.onChange=n=>{$('wundo').disabled=$('wclr').disabled=!n;$('wchk').disabled=!n};
+    loadStrokes().then(d=>{paths=d&&d[it.k]});
+    const reveal=()=>{$('wword').innerHTML=esc(it.w).replace(esc(it.k),`<span class="wans">${esc(it.k)}</span>`)};
+    const rec=g=>{if(recorded)return;recorded=true;locked=true;record(g===2,g)};
+    /* no stroke data (offline / failed load): fall back to self-marking as before */
+    const selfMark=()=>{reveal();$('ghost').hidden=false;$('wact').hidden=true;$('grade').hidden=false};
+    app.querySelectorAll('#grade button').forEach(b=>b.onclick=()=>{if(recorded)return;const g=+b.dataset.g;rec(g);
+      if(g===2){const fb=$('fb');fb.className='fb ok popin';fb.innerHTML=cheer(streak());setTimeout(step,1300)}else step()});
+    function show(res){
+      reveal();const bad=res?res.bad:[];
+      const MSG={count:()=>`「${esc(it.k)}」は <b>${res.n}かく</b>。凛ちゃんは ${res.m}かく だったよ`,
+        order:()=>'かきじゅんが ちがう ところが あるよ',rev:()=>'ぎゃくむきに かいた 線が あるよ',shape:()=>'かたちが ちがう 線が あるよ'};
+      const mark=!res?'':res.grade===2?'◎':res.grade===1?'△':'×';
+      const msg=!res?'かきじゅんを 見て、なぞって かいてみよう':res.grade===2?cheer(streak()):MSG[res.why]()+(bad.length?'<br><small>赤い ばんごうの 線を 見てね</small>':'');
+      $('wres').innerHTML=`<button class="sobtn" id="replay" aria-label="かきじゅんを もう一回 見る">${strokeFig(paths,bad)}<span>かきじゅん ▶</span></button>
+        <div class="wverdict">${mark?`<span class="vmark g${res.grade}">${mark}</span>`:''}<div class="vmsg${res&&res.grade===2?'':' ng'}">${msg}</div>
+        <div class="row"><button class="btn" id="again">もう一回 かく</button><button class="btn primary" id="wnext">つぎへ</button></div></div>`;
+      $('wres').hidden=false;$('wact').hidden=true;
+      const fig=$('wres').querySelector('svg');playFig(fig);$('replay').onclick=()=>playFig(fig);
+      $('again').onclick=()=>{pad.clear();$('ghost').hidden=false;$('wres').hidden=true;$('wact').hidden=false;$('widk').hidden=true};
+      $('wnext').onclick=step;
+    }
+    $('wchk').onclick=()=>{
+      if(!paths){selfMark();return}
+      const res=judgeStrokes(refPoints(it.k,paths),pad.lines());
+      pad.mark(res.badDrawn||new Set());rec(res.grade);show(res);
+    };
+    $('widk').onclick=()=>{if(!paths){selfMark();return}rec(0);$('ghost').hidden=false;show(null)};
   }
   step();
 }
@@ -656,7 +758,8 @@ function parent(){
       ${pendingRestore?`<div class="confirm"><span>このバックアップ（${esc(pendingRestore.when)}）で 今の記録を上書きしますか？</span><button class="btn small primary" id="rsYes">上書きする</button><button class="btn small" id="rsNo">やめる</button></div>`:''}</div>
     <div class="card"><h3>やりなおし</h3>
       <div class="row"><button class="btn small" data-reset="kt">漢字テストをやりなおす</button><button class="btn small" data-reset="mt">算数テストをやりなおす</button><button class="btn small" data-reset="all">すべての記録を消す</button></div>
-      ${cf('kt')}${cf('mt')}${cf('all')}</div>`;
+      ${cf('kt')}${cf('mt')}${cf('all')}</div>
+    <p class="en">書き順データ：<a href="https://kanjivg.tagaini.net/" target="_blank" rel="noopener">KanjiVG</a>（Ulrich Apel, CC BY-SA 3.0）。書き取りの自動判定は、画数・書き順・線の向きと形を見ています（とめ・はね・はらいは見ていません）。</p>`;
   document.getElementById('home').onclick=()=>{confirmFor=null;backupMsg='';pendingRestore=null;home()};
   document.getElementById('enT').onclick=()=>{st.en=!st.en;save();parent()};
   const stamp=()=>{st.lastBackup=todayStr();save()};
