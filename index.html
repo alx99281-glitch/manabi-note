@@ -131,6 +131,8 @@ canvas.pad{width:100%;height:380px;border-radius:12px;border:2px solid var(--lin
 @media (orientation:portrait),(max-width:760px){
   .wcard{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "box" "ctrl";--wb:clamp(220px,min(calc(100vh - 610px),86vw),520px);--wb:clamp(220px,min(calc(100dvh - 610px),86vw),520px)}
   .wcard .whead,.wcard .wctrl{align-self:auto}}
+.steps{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:4px}
+.tok{min-height:48px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);padding:0 12px;font-size:16px;font-family:ui-monospace,monospace;width:100%;max-width:520px}
 .wact{justify-content:center}
 .wres{display:flex;gap:16px;align-items:center;justify-content:center}
 .sobtn{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;padding:0;color:var(--muted);font-size:.8rem;font-weight:700}
@@ -220,13 +222,65 @@ const big=n=>n.toLocaleString('ja-JP');
 const KEY='manabi-v1';
 const fresh=()=>({v:1,en:true,kanji:{},write:{},units:{},days:{},kt:null,mt:null,updated:0});
 /* progress lives only on this iPad (localStorage); the parent view can save/restore a backup file */
+/* ---------- sync between iPads through a private (secret) GitHub Gist ----------
+   One iPad records: it pushes a copy a couple of seconds after each save. Other iPads only view: they pull and replace.
+   The token and role live under their own key, so they never travel inside the data, the gist or backup files. */
+const SKEY='manabi-sync', GIST_DESC='manabi-note sync', GIST_FILE='manabi-note.json';
+let sync={token:'',gist:'',role:'',last:'',err:''}, syncMsg='', pushTimer=null, pushing=false;
+try{Object.assign(sync,JSON.parse(localStorage.getItem(SKEY)||'{}'))}catch(e){}
+const saveSync=()=>{try{localStorage.setItem(SKEY,JSON.stringify(sync))}catch(e){}};
+async function gh(path,opt={}){
+  const r=await fetch('https://api.github.com'+path,{...opt,headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+sync.token,...(opt.body?{'Content-Type':'application/json'}:{})}});
+  if(!r.ok)throw new Error(r.status===401?'鍵（トークン）が正しくないか、期限が切れています':r.status===403||r.status===404?'鍵に Gist の権限がないか、同期用のメモが見つかりません':'GitHubにつながりませんでした（'+r.status+'）');
+  return r.json();
+}
+async function findGist(){
+  for(let page=1;page<=5;page++){const l=await gh('/gists?per_page=100&page='+page);
+    const g=l.find(x=>x.description===GIST_DESC&&x.files&&x.files[GIST_FILE]);if(g)return g.id;if(l.length<100)break}
+  return '';
+}
+async function readGist(){
+  const g=await gh('/gists/'+sync.gist),f=g.files&&g.files[GIST_FILE];if(!f)return null;
+  return JSON.parse(f.truncated?await (await fetch(f.raw_url)).text():f.content);
+}
+function pushSoon(){if(sync.role!=='main'||!sync.gist)return;clearTimeout(pushTimer);pushTimer=setTimeout(pushNow,2000)}
+async function pushNow(){
+  clearTimeout(pushTimer);pushTimer=null;
+  if(sync.role!=='main'||!sync.gist)return;if(pushing){pushSoon();return}
+  pushing=true;const body=JSON.stringify({files:{[GIST_FILE]:{content:backupText()}}});
+  try{await gh('/gists/'+sync.gist,{method:'PATCH',body});sync.last=new Date().toISOString();sync.err=''}
+  catch(e){sync.err=e.message}finally{pushing=false;saveSync()}
+}
+/* view-only iPads always take the gist; the recording iPad takes it only when it is newer (e.g. a replaced iPad) */
+async function pull(){
+  if(!sync.token||!sync.gist)return false;
+  try{const o=await readGist(),d=o&&o.data;let changed=false;
+    if(d&&d.kanji&&d.units&&d.days&&(sync.role==='view'?(d.updated||0)!==(st.updated||0):(d.updated||0)>(st.updated||0))){
+      st=Object.assign(fresh(),d);try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}changed=true}
+    sync.last=new Date().toISOString();sync.err='';saveSync();return changed}
+  catch(e){sync.err=e.message;saveSync();return false}
+}
+async function setupSync(token,role){
+  sync={token:token.trim(),gist:'',role,last:'',err:''};
+  sync.gist=await findGist();
+  if(!sync.gist){
+    if(role==='view')throw new Error('同期用のメモがまだありません。先に凛ちゃんのiPadで「このiPadで記録する」を設定してください');
+    const g=await gh('/gists',{method:'POST',body:JSON.stringify({description:GIST_DESC,public:false,files:{[GIST_FILE]:{content:backupText()}}})});
+    sync.gist=g.id;sync.last=new Date().toISOString();saveSync();return;
+  }
+  saveSync();await pull();if(role==='main')await pushNow();
+}
+const refreshView=()=>{if(cur==='home')home();else if(cur==='parent')parent()};
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){if(pushTimer)pushNow()}
+  else if(sync.role==='view')pull().then(ch=>{if(ch)refreshView()})});
 let st=fresh(), cur='home', storeOk=true, persisted=null;
 try{const s=localStorage.getItem(KEY);if(s)st=Object.assign(fresh(),JSON.parse(s))}catch(e){storeOk=false}
 /* level-test rule changed 2026-11: all-correct passes even when slow. Re-apply it to tests taken before the change */
 function migrate(){if(st.mig1)return;st.mig1=true;const u=st.mt&&st.mt.u;if(!u)return;
   for(const id in u){const x=u[id];if(x.f&&x.n&&x.c===x.n){const s=st.units[id]||(st.units[id]={h:[],t:[],m:false});s.m=true}}}
 if(!st.mig1){migrate();save()}
-function save(){st.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(st));storeOk=true}catch(e){storeOk=false}}
+function save(){st.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(st));storeOk=true}catch(e){storeOk=false}pushSoon()}
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(p=>{persisted=p}).catch(()=>{});
 const standalone=()=>window.navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
 function backupText(){return JSON.stringify({app:'manabi-note',v:1,saved:new Date().toISOString(),data:st})}
@@ -659,7 +713,7 @@ function mathTest(){
 function topBar(){
   const s=streak();
   return `<div class="top"><div class="brand"><b>まなびノート</b><span>かんじ・さんすう</span></div>
-    <div class="row"><span class="pill">れんぞく <b>${s}</b> 日</span><button class="btn small" id="toParent">おうちの人へ</button></div></div>`;
+    <div class="row">${sync.role==='view'?'<span class="pill">見るだけの iPad</span>':''}<span class="pill">れんぞく <b>${s}</b> 日</span><button class="btn small" id="toParent">おうちの人へ</button></div></div>`;
 }
 function bindTop(){document.getElementById('toParent').onclick=parent}
 function weekStrip(){
@@ -714,6 +768,28 @@ function results(title,res,stopped){
   bindTop();document.getElementById('back').onclick=home;
 }
 let confirmFor=null;
+function syncCard(){
+  const when=sync.last?new Date(sync.last).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'まだ';
+  const msg=syncMsg?`<p class="${syncMsg.startsWith('×')?'fb ng':'fb ok'}">${esc(syncMsg)}</p>`:'';
+  if(sync.gist)return `<p>${sync.role==='main'?'<b>このiPadで記録しています</b>（練習するたびに GitHub に送ります）':'<b>このiPadは見るだけです</b>（開くたびに 凛ちゃんのiPadの記録を読み込みます）'}</p>
+      <p class="en">最後の同期：${when}${sync.err?` <span style="color:var(--red)">／ うまくいきませんでした：${esc(sync.err)}</span>`:''}</p>${msg}
+      <div class="row"><button class="btn small primary" id="syNow">今すぐ同期</button><button class="btn small" id="syOff">このiPadの同期をやめる</button></div>`;
+  return `<p class="muted">凛ちゃんのiPadの記録を、あなたのGitHubの非公開メモ（Gist）に送って、別のiPadでも見られるようにします。</p>
+      <ol class="en steps"><li><a href="https://github.com/settings/tokens/new?scopes=gist&description=manabi-note" target="_blank" rel="noopener">GitHubで鍵（トークン）を作る</a>。「gist」だけにチェックが入った状態で、Expiration（期限）を選び、一番下の「Generate token」を押す</li>
+      <li>表示された <b>ghp_</b> で始まる鍵をコピーして、下に貼る（両方のiPadで同じ鍵を使います）</li>
+      <li>凛ちゃんのiPadでは「このiPadで記録する」、自分のiPadでは「見るだけ」を押す（凛ちゃんのiPadが先）</li></ol>
+      <input class="tok" id="syTok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ghp_… を貼り付け">
+      <div class="row"><button class="btn small primary" id="syMain">このiPadで記録する（凛ちゃん用）</button><button class="btn small" id="syView">このiPadは見るだけ</button></div>${msg}
+      <p class="en">この鍵でできるのは Gist（メモ）の読み書きだけで、ほかのリポジトリには触れません。鍵はこのiPadの中にだけ保存されます。</p>`;
+}
+function bindSync(){
+  const $=id=>document.getElementById(id),busy=b=>{app.querySelectorAll('.card button').forEach(x=>x.disabled=b)};
+  const go=role=>async()=>{const t=$('syTok').value.trim();if(!t){syncMsg='× 鍵を貼り付けてください';parent();return}
+    busy(true);try{await setupSync(t,role);syncMsg='○ 同期を設定しました'}catch(e){sync={token:'',gist:'',role:'',last:'',err:''};saveSync();syncMsg='× '+e.message}parent()};
+  if($('syMain')){$('syMain').onclick=go('main');$('syView').onclick=go('view')}
+  if($('syNow'))$('syNow').onclick=async()=>{busy(true);syncMsg='';if(sync.role==='main'){await pull();await pushNow()}else await pull();syncMsg=sync.err?'':'○ 同期しました';parent()};
+  if($('syOff'))$('syOff').onclick=()=>{clearTimeout(pushTimer);sync={token:'',gist:'',role:'',last:'',err:''};saveSync();syncMsg='○ このiPadの同期をやめました（記録はこのiPadに残っています）';parent()};
+}
 function parent(){
   cur='parent';
   const t=TODAY();
@@ -750,6 +826,7 @@ function parent(){
     <div class="card"><h3>設定</h3>
       <button class="toggle" id="enT"><span class="sw${st.en?' on':''}"></span><span>英語のヒントを表示する（UWCで英語で習っている用語の補助）</span></button>
       <p class="en">${sync}</p></div>
+    <div class="card"><h3>ほかのiPadと同期</h3>${syncCard()}</div>
     <div class="card"><h3>バックアップ</h3>
       <p class="muted">iPadを買い替えるときや、念のための控えに。月に1回くらいファイルに保存しておくと安心です。</p>
       <div class="row"><button class="btn small primary" id="bkSave">ファイルに保存</button><button class="btn small" id="bkCopy">コピーする</button><label class="btn small" for="bkFile">ファイルから読み込む</label><input type="file" id="bkFile" accept=".json,application/json,text/plain" hidden></div>
@@ -760,8 +837,9 @@ function parent(){
       <div class="row"><button class="btn small" data-reset="kt">漢字テストをやりなおす</button><button class="btn small" data-reset="mt">算数テストをやりなおす</button><button class="btn small" data-reset="all">すべての記録を消す</button></div>
       ${cf('kt')}${cf('mt')}${cf('all')}</div>
     <p class="en">書き順データ：<a href="https://kanjivg.tagaini.net/" target="_blank" rel="noopener">KanjiVG</a>（Ulrich Apel, CC BY-SA 3.0）。書き取りの自動判定は、画数・書き順・線の向きと形を見ています（とめ・はね・はらいは見ていません）。</p>`;
-  document.getElementById('home').onclick=()=>{confirmFor=null;backupMsg='';pendingRestore=null;home()};
+  document.getElementById('home').onclick=()=>{confirmFor=null;backupMsg='';syncMsg='';pendingRestore=null;home()};
   document.getElementById('enT').onclick=()=>{st.en=!st.en;save();parent()};
+  bindSync();
   const stamp=()=>{st.lastBackup=todayStr();save()};
   document.getElementById('bkSave').onclick=()=>{
     const blob=new Blob([backupText()],{type:'application/json'}),name=`manabi-backup-${todayStr()}.json`;
@@ -786,6 +864,7 @@ function parent(){
     confirmFor=null;save();parent()});
 }
 home();
+if(sync.gist)pull().then(ch=>{if(ch)refreshView()});
 </script>
 </body>
 </html>
