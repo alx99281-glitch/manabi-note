@@ -794,7 +794,7 @@ function syncCard(){
       ${sync.note?`<p class="fb ok">${esc(sync.note)}</p>`:''}<p class="en">最後の同期：${when}${sync.err?` <span style="color:var(--red)">／ うまくいきませんでした：${esc(sync.err)}</span>`:''}</p>${msg}
       <div class="row"><button class="btn small primary" id="syNow">今すぐ同期</button><button class="btn small" id="syOff">このiPadの同期をやめる</button></div>`;
   return `<p class="muted">凛ちゃんのiPadの記録を、あなたのGitHubの非公開メモ（Gist）に送って、別のiPadでも見られるようにします。</p>
-      <ol class="en steps"><li><a href="https://github.com/settings/tokens/new?scopes=gist&description=manabi-note" target="_blank" rel="noopener">GitHubで鍵（トークン）を作る</a>。「gist」だけにチェックが入った状態で、Expiration（期限）を選び、一番下の「Generate token」を押す</li>
+      <ol class="en steps"><li><a href="https://github.com/settings/tokens/new?scopes=gist&description=manabi-note-${new Date().toISOString().slice(0,16).replace(/[^0-9]/g,'')}" target="_blank" rel="noopener">GitHubで鍵（トークン）を作る</a>。「gist」だけにチェックが入った状態で、Expiration（期限）を選び、一番下の「Generate token」を押す</li>
       <li>表示された <b>ghp_</b> で始まる鍵をコピーして、下に貼る（両方のiPadで同じ鍵を使います）</li>
       <li>凛ちゃんのiPadでは「このiPadで記録する」、自分のiPadでは「見るだけ」を押す（凛ちゃんのiPadが先）</li></ol>
       <input class="tok" id="syTok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ghp_… を貼り付け">
