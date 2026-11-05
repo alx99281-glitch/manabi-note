@@ -206,6 +206,10 @@ const fresh=()=>({v:1,en:true,kanji:{},write:{},units:{},days:{},kt:null,mt:null
 /* progress lives only on this iPad (localStorage); the parent view can save/restore a backup file */
 let st=fresh(), cur='home', storeOk=true, persisted=null;
 try{const s=localStorage.getItem(KEY);if(s)st=Object.assign(fresh(),JSON.parse(s))}catch(e){storeOk=false}
+/* level-test rule changed 2026-11: all-correct passes even when slow. Re-apply it to tests taken before the change */
+function migrate(){if(st.mig1)return;st.mig1=true;const u=st.mt&&st.mt.u;if(!u)return;
+  for(const id in u){const x=u[id];if(x.f&&x.n&&x.c===x.n){const s=st.units[id]||(st.units[id]={h:[],t:[],m:false});s.m=true}}}
+if(!st.mig1){migrate();save()}
 function save(){st.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(st));storeOk=true}catch(e){storeOk=false}}
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(p=>{persisted=p}).catch(()=>{});
 const standalone=()=>window.navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
@@ -213,7 +217,7 @@ function backupText(){return JSON.stringify({app:'manabi-note',v:1,saved:new Dat
 function restoreFrom(text){
   const o=JSON.parse(text);const d=o&&o.app==='manabi-note'?o.data:o;
   if(!d||typeof d!=='object'||!d.kanji||!d.units||!d.days)throw new Error('format');
-  st=Object.assign(fresh(),d);save();
+  st=Object.assign(fresh(),d);migrate();save();
 }
 let backupMsg='', pendingRestore=null;
 
@@ -534,7 +538,7 @@ function mathTest(){
   const u=(st.mt&&st.mt.u)||{};st.mt={u,date:todayStr(),done:false};
   let ui=UNITS.findIndex(x=>!(u[x.id]&&u[x.id].f));if(ui<0)ui=0;let fails=0;
   const finish=un=>{const x=u[un.id];x.f=true;const s=st.units[un.id]||(st.units[un.id]={h:[],t:[],m:false});
-    x.slow=!!(un.fast&&x.n&&x.ms/x.n/1000>un.fast);s.m=x.c===x.n&&!x.slow;fails=x.c/x.n<.5?fails+1:0};
+    x.slow=!!(un.fast&&x.n&&x.ms/x.n/1000>un.fast);s.m=x.c===x.n;fails=x.c/x.n<.5?fails+1:0};
   runQuiz({title:'さんすう レベルテスト',total:res=>res.length+Math.max(1,(UNITS.length-ui)*2),
     next(){
       while(ui<UNITS.length){
@@ -639,7 +643,7 @@ function parent(){
       <p class="en">間違えた漢字は 翌日→3日後→1週間後… と間隔をあけて また出ます。</p></div>
     ${hard.length?`<div class="card"><h3>間違えが多い漢字</h3><div class="misslist">${hard.map(([k,s])=>`<span class="miss"><b>${esc(KINFO[k].w)}</b>${esc(KINFO[k].r)} <span class="muted">×${s.w}</span></span>`).join('')}</div></div>`:''}
     <div class="card"><h3>算数（単元別）</h3><div class="tablewrap"><table><thead><tr><th>学年</th><th>単元</th><th>状態</th><th>直近の正答率</th><th>平均時間</th><th>テスト</th></tr></thead><tbody>${uRows}</tbody></table></div>
-      <p class="en">「できた」= 直近8問で7問以上正解。たし算・ひき算・九九・わり算は 1問あたりの時間も見ています（遅めだと「できた」になりません）。</p></div>
+      <p class="en">「できた」= 直近8問で7問以上正解。レベルテストでは全問正解なら「できた」（時間がかかったものは「遅め」と表示）。ふだんの練習では、たし算・ひき算・九九・わり算は 1問あたりの時間も見ています（遅めだと「できた」になりません）。</p></div>
     <div class="card"><h3>この2週間</h3><div class="tablewrap"><svg viewBox="0 0 420 112" width="100%" style="max-width:640px;min-width:320px" role="img" aria-label="日ごとの問題数"><line x1="0" y1="90" x2="420" y2="90" stroke="var(--line)"/>${bars}</svg></div><p class="en">1日あたりの問題数（目安 18問）</p></div>
     <div class="card"><h3>設定</h3>
       <button class="toggle" id="enT"><span class="sw${st.en?' on':''}"></span><span>英語のヒントを表示する（UWCで英語で習っている用語の補助）</span></button>
