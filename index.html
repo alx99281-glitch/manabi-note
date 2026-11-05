@@ -250,7 +250,12 @@ async function readGist(){
   return JSON.parse(f.truncated?await (await fetch(f.raw_url)).text():f.content);
 }
 const gistBody=()=>JSON.stringify({...JSON.parse(backupText()),by:sync.id,claimAt:sync.claimAt});
-const outranked=o=>o&&o.by&&o.by!==sync.id&&(o.claimAt||0)>(sync.claimAt||0);
+/* another device owns the gist when: it claimed later; or this device has no record of its own while the gist does
+   (a phone set to 記録する by mistake, or data pushed by an older version without by/claimAt); or, on equal claims, it has done more */
+const progress=d=>d?sum(Object.values(d.days||{}).map(x=>x.n||0))+Object.keys(d.kanji||{}).length:0;
+const outranked=o=>!!(o&&o.data&&o.by!==sync.id&&(
+  (o.claimAt||0)>(sync.claimAt||0)||(emptyRec(st)&&!emptyRec(o.data))||
+  (o.by&&(o.claimAt||0)===(sync.claimAt||0)&&progress(o.data)>progress(st))));
 function demote(){sync.role='view';sync.note='ほかのiPadが「記録する」になったので、このiPadは 見るだけ に切り替わりました'}
 function takeRemote(d){st=Object.assign(fresh(),d);try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
 function pushSoon(){if(sync.role!=='main'||!sync.gist)return;clearTimeout(pushTimer);pushTimer=setTimeout(pushNow,2000)}
